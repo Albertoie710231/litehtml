@@ -397,7 +397,8 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_table::init()
                 {
 					if(item_type != iterator_item_type_end_parent)
 					{
-						el = el->init();
+						// Use init_tree instead of init to ensure cell children are also initialized
+						el = init_tree(el);
 						m_grid->add_cell(el);
 					}
                 });
@@ -407,7 +408,8 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_table::init()
     {
         if (el->src_el()->css().get_display() == display_table_caption)
         {
-            el = el->init();
+            // Use init_tree instead of init to ensure caption children are also initialized
+            el = init_tree(el);
             m_grid->captions().push_back(el);
         }
     }
@@ -431,8 +433,12 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_table::init()
     return shared_from_this();
 }
 
-void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, draw_flag flag, int zindex)
+void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, draw_flag flag, int zindex, int depth)
 {
+    // Prevent stack overflow from deep/cyclic DOM structures
+    constexpr int MAX_DEPTH = 500;
+    if (depth > MAX_DEPTH) return;
+
     if (!m_grid) return;
 
     position pos = m_pos;
@@ -444,7 +450,7 @@ void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t
         {
             caption->src_el()->draw(hdc, pos.x, pos.y, clip, caption);
         }
-        caption->draw_children(hdc, pos.x, pos.y, clip, flag, zindex);
+        caption->draw_children(hdc, pos.x, pos.y, clip, flag, zindex, depth + 1);
     }
     for (int row = 0; row < m_grid->rows_count(); row++)
     {
@@ -461,10 +467,65 @@ void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t
                 {
                     cell->el->src_el()->draw(hdc, pos.x, pos.y, clip, cell->el);
                 }
-                cell->el->draw_children(hdc, pos.x, pos.y, clip, flag, zindex);
+                cell->el->draw_children(hdc, pos.x, pos.y, clip, flag, zindex, depth + 1);
             }
         }
     }
+}
+
+std::shared_ptr<litehtml::element> litehtml::render_item_table::get_child_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, draw_flag flag, int zindex, int depth)
+{
+    // Prevent stack overflow
+    constexpr int MAX_DEPTH = 500;
+    if (depth > MAX_DEPTH) return nullptr;
+
+    if (!m_grid) return nullptr;
+
+    element::ptr ret = nullptr;
+
+    position el_pos = m_pos;
+    el_pos.x = x - el_pos.x;
+    el_pos.y = y - el_pos.y;
+
+    // Search through table cells (stored in m_grid, not m_children)
+    for (int row = m_grid->rows_count() - 1; row >= 0 && !ret; row--)
+    {
+        for (int col = m_grid->cols_count() - 1; col >= 0 && !ret; col--)
+        {
+            table_cell* cell = m_grid->cell(col, row);
+            if (cell && cell->el && cell->el->is_visible())
+            {
+                if (cell->el->is_point_inside(el_pos.x, el_pos.y))
+                {
+                    // Recurse into cell to find inline children (like links)
+                    ret = cell->el->get_element_by_point(el_pos.x, el_pos.y, client_x, client_y, depth + 1);
+                    if (!ret)
+                    {
+                        ret = cell->el->src_el();
+                    }
+                }
+            }
+        }
+    }
+
+    // Also check captions
+    if (!ret)
+    {
+        for (auto it = m_grid->captions().rbegin(); it != m_grid->captions().rend() && !ret; ++it)
+        {
+            auto& caption = *it;
+            if (caption->is_visible() && caption->is_point_inside(el_pos.x, el_pos.y))
+            {
+                ret = caption->get_element_by_point(el_pos.x, el_pos.y, client_x, client_y, depth + 1);
+                if (!ret)
+                {
+                    ret = caption->src_el();
+                }
+            }
+        }
+    }
+
+    return ret;
 }
 
 litehtml::pixel_t litehtml::render_item_table::get_draw_vertical_offset()
