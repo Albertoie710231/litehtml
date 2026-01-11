@@ -85,6 +85,7 @@ namespace litehtml
 		uint_ptr						get_font(const font_description& descr, font_metrics* fm);
 		pixel_t							render(pixel_t max_width, render_type rt = render_all);
 		pixel_t							render(pixel_t max_width, render_type rt, bool incremental_layout);
+		pixel_t							render(pixel_t max_width, render_type rt, bool incremental_layout, pixel_t layout_threshold);
 		void							draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip);
 		web_color						get_def_color()	{ return m_def_color; }
 		void 							cvt_units(css_length& val, const font_metrics& metrics, pixel_t size) const;

@@ -1,5 +1,6 @@
 #include "render_block_context.h"
 #include "document.h"
+#include "document_container.h"
 #include "types.h"
 
 litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /*x*/, pixel_t /*y*/, bool second_pass, const containing_block_context &self_size, formatting_context* fmt_ctx)
@@ -15,6 +16,9 @@ litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /
     // Incremental layout: track if we're beyond the viewport threshold
     containing_block_context child_context = self_size;
 
+    // Progress callback for responsive UI during layout
+    int progress_counter = 0;
+    constexpr int PROGRESS_INTERVAL = 50;  // Call callback every N children
 
     for (const auto& el : m_children)
     {
@@ -159,6 +163,16 @@ litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /
                 {
                     el->apply_relative_shift(self_size);
                 }
+            }
+        }
+
+        // Periodically call progress callback to keep UI responsive during layout
+        if (++progress_counter >= PROGRESS_INTERVAL)
+        {
+            progress_counter = 0;
+            if (auto doc = src_el()->get_document())
+            {
+                doc->container()->on_layout_progress();
             }
         }
     }

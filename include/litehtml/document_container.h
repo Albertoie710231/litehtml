@@ -52,7 +52,7 @@ namespace litehtml
 		virtual void				draw_radial_gradient(litehtml::uint_ptr hdc, const background_layer& layer, const background_layer::radial_gradient& gradient) = 0;
 		virtual void				draw_conic_gradient(litehtml::uint_ptr hdc, const background_layer& layer, const background_layer::conic_gradient& gradient) = 0;
 		virtual void				draw_borders(litehtml::uint_ptr hdc, const litehtml::borders& borders, const litehtml::position& draw_pos, bool root) = 0;
-		virtual void				draw_box_shadow(litehtml::uint_ptr hdc, const std::vector<box_shadow>& shadows, const litehtml::position& draw_pos) {}
+		virtual void				draw_box_shadow(litehtml::uint_ptr /*hdc*/, const std::vector<box_shadow>& /*shadows*/, const litehtml::position& /*draw_pos*/) {}
 
 		virtual	void				set_caption(const char* caption) = 0;
 		virtual	void				set_base_url(const char* base_url) = 0;
@@ -74,6 +74,11 @@ namespace litehtml
 		virtual void				get_language(litehtml::string& language, litehtml::string& culture) const = 0;
 		virtual litehtml::string	resolve_color(const litehtml::string& /*color*/) const { return litehtml::string(); }
 		virtual void				split_text(const char* text, const std::function<void(const char*)>& on_word, const std::function<void(const char*)>& on_space);
+
+		// Called periodically during layout to allow the application to process events.
+		// Return true to continue layout, false to abort (not recommended mid-layout).
+		// Default implementation just continues.
+		virtual bool				on_layout_progress() { return true; }
 
 	protected:
 		virtual ~document_container() = default;

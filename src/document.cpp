@@ -559,6 +559,12 @@ pixel_t document::render( pixel_t max_width, render_type rt )
 
 pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_layout )
 {
+	// Use default threshold (2x viewport) for incremental layout
+	return render(max_width, rt, incremental_layout, 0);
+}
+
+pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_layout, pixel_t layout_threshold )
+{
 	pixel_t ret = 0;
 	if(m_root && m_root_render)
 	{
@@ -570,11 +576,11 @@ pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_la
 		cb_context.height = viewport.height;
 		cb_context.height.type = containing_block_context::cbc_value_type_absolute;
 
-		// Incremental layout: only fully layout elements within 2x viewport height
+		// Incremental layout: only fully layout elements within threshold
 		if (incremental_layout)
 		{
 			cb_context.incremental_layout_enabled = true;
-			cb_context.deferred_layout_threshold = viewport.height * 2;
+			cb_context.deferred_layout_threshold = layout_threshold > 0 ? layout_threshold : viewport.height * 2;
 			cb_context.current_document_y = 0;
 		}
 

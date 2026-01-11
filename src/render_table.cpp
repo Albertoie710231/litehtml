@@ -1,5 +1,6 @@
 #include "render_table.h"
 #include "document.h"
+#include "document_container.h"
 #include "iterators.h"
 
 
@@ -163,9 +164,23 @@ litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, con
 
     bool row_span_found = false;
 
+    // Progress callback for responsive UI during table layout
+    int progress_counter = 0;
+    constexpr int TABLE_PROGRESS_INTERVAL = 5;  // Call callback every N rows
+
     // render cells with computed width
     for (int row = 0; row < m_grid->rows_count(); row++)
     {
+        // Periodically call progress callback to keep UI responsive during layout
+        if (++progress_counter >= TABLE_PROGRESS_INTERVAL)
+        {
+            progress_counter = 0;
+            if (auto doc = src_el()->get_document())
+            {
+                doc->container()->on_layout_progress();
+            }
+        }
+
         m_grid->row(row).height = 0;
         for (int col = 0; col < m_grid->cols_count(); col++)
         {
@@ -473,7 +488,7 @@ void litehtml::render_item_table::draw_children(uint_ptr hdc, pixel_t x, pixel_t
     }
 }
 
-std::shared_ptr<litehtml::element> litehtml::render_item_table::get_child_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, draw_flag flag, int zindex, int depth)
+std::shared_ptr<litehtml::element> litehtml::render_item_table::get_child_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, draw_flag /*flag*/, int /*zindex*/, int depth)
 {
     // Prevent stack overflow
     constexpr int MAX_DEPTH = 500;
