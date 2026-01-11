@@ -7,11 +7,27 @@
 #include "borders.h"
 #include "css_offsets.h"
 #include "background.h"
+#include "web_color.h"
 
 namespace litehtml
 {
 	class html_tag;
 	class document;
+
+	// Box shadow structure
+	struct box_shadow
+	{
+		pixel_t offset_x = 0;
+		pixel_t offset_y = 0;
+		pixel_t blur_radius = 0;
+		pixel_t spread_radius = 0;
+		web_color color;
+		bool inset = false;
+
+		box_shadow() = default;
+		box_shadow(pixel_t ox, pixel_t oy, pixel_t blur, pixel_t spread, const web_color& c, bool is_inset = false)
+			: offset_x(ox), offset_y(oy), blur_radius(blur), spread_radius(spread), color(c), inset(is_inset) {}
+	};
 
 	template<class CssT, class CompT>
 	class css_property
@@ -90,14 +106,29 @@ namespace litehtml
 		flex_align_items		m_flex_align_self;
 		flex_align_content		m_flex_align_content;
 
+		css_length				m_flex_row_gap;
+		css_length				m_flex_column_gap;
+
+		// CSS Grid properties
+		string					m_grid_template_columns;
+		string					m_grid_template_rows;
+		int						m_grid_column_start = 0;  // 0 = auto
+		int						m_grid_column_end = 0;
+		int						m_grid_row_start = 0;
+		int						m_grid_row_end = 0;
+
 		caption_side			m_caption_side;
 
 		int 					m_order;
+
+		float					m_opacity = 1.0f;
+		std::vector<box_shadow>	m_box_shadows;
 
 	private:
 		void compute_font(const html_tag* el, const std::shared_ptr<document>& doc);
 		void compute_background(const html_tag* el, const std::shared_ptr<document>& doc);
 		void compute_flex(const html_tag* el, const std::shared_ptr<document>& doc);
+		void compute_grid(const html_tag* el, const std::shared_ptr<document>& doc);
 		web_color get_color_property(const html_tag* el, string_id name, bool inherited, web_color default_value, uint_ptr member_offset) const;
 		void snap_border_width(css_length& width, const std::shared_ptr<document>& doc);
 
@@ -281,8 +312,25 @@ namespace litehtml
 		flex_align_items get_flex_align_self() const;
 		flex_align_content get_flex_align_content() const;
 
+		const css_length& get_row_gap() const;
+		const css_length& get_column_gap() const;
+
+		// CSS Grid getters
+		const string& get_grid_template_columns() const;
+		const string& get_grid_template_rows() const;
+		int get_grid_column_start() const;
+		int get_grid_column_end() const;
+		int get_grid_row_start() const;
+		int get_grid_row_end() const;
+
 		int get_order() const;
 		void set_order(int order);
+
+		float get_opacity() const;
+		void set_opacity(float opacity);
+
+		const std::vector<box_shadow>& get_box_shadows() const;
+		void set_box_shadows(const std::vector<box_shadow>& shadows);
 
 		int get_text_decoration_line() const;
 		text_decoration_style get_text_decoration_style() const;
@@ -694,6 +742,47 @@ namespace litehtml
 		return m_flex_align_content;
 	}
 
+	inline const css_length& css_properties::get_row_gap() const
+	{
+		return m_flex_row_gap;
+	}
+
+	inline const css_length& css_properties::get_column_gap() const
+	{
+		return m_flex_column_gap;
+	}
+
+	// CSS Grid getters
+	inline const string& css_properties::get_grid_template_columns() const
+	{
+		return m_grid_template_columns;
+	}
+
+	inline const string& css_properties::get_grid_template_rows() const
+	{
+		return m_grid_template_rows;
+	}
+
+	inline int css_properties::get_grid_column_start() const
+	{
+		return m_grid_column_start;
+	}
+
+	inline int css_properties::get_grid_column_end() const
+	{
+		return m_grid_column_end;
+	}
+
+	inline int css_properties::get_grid_row_start() const
+	{
+		return m_grid_row_start;
+	}
+
+	inline int css_properties::get_grid_row_end() const
+	{
+		return m_grid_row_end;
+	}
+
 	inline caption_side css_properties::get_caption_side() const
 	{
 		return m_caption_side;
@@ -711,6 +800,26 @@ namespace litehtml
 	inline void css_properties::set_order(int order)
 	{
 		m_order = order;
+	}
+
+	inline float css_properties::get_opacity() const
+	{
+		return m_opacity;
+	}
+
+	inline void css_properties::set_opacity(float opacity)
+	{
+		m_opacity = opacity;
+	}
+
+	inline const std::vector<box_shadow>& css_properties::get_box_shadows() const
+	{
+		return m_box_shadows;
+	}
+
+	inline void css_properties::set_box_shadows(const std::vector<box_shadow>& shadows)
+	{
+		m_box_shadows = shadows;
 	}
 
 	inline int css_properties::get_text_decoration_line() const

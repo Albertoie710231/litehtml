@@ -10,6 +10,21 @@ litehtml::el_image::el_image(const document::ptr& doc) : html_tag(doc)
 void litehtml::el_image::get_content_size( size& sz, pixel_t /*max_width*/ )
 {
 	get_document()->container()->get_image_size(m_src.c_str(), nullptr, sz);
+
+	// Fallback to HTML width/height attributes if image size unknown
+	if (sz.width <= 0 || sz.height <= 0)
+	{
+		const char* w_attr = get_attr("width");
+		const char* h_attr = get_attr("height");
+		if (w_attr && sz.width <= 0)
+		{
+			sz.width = atoi(w_attr);
+		}
+		if (h_attr && sz.height <= 0)
+		{
+			sz.height = atoi(h_attr);
+		}
+	}
 }
 
 bool litehtml::el_image::is_replaced() const
@@ -38,6 +53,30 @@ void litehtml::el_image::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 	pos.x += x;
 	pos.y += y;
 	pos.round();
+
+	// If render didn't compute size (inline layout bug), use HTML attributes or image size
+	if (pos.width == 0 || pos.height == 0)
+	{
+		// Try HTML width/height attributes first
+		const char* w_attr = get_attr("width");
+		const char* h_attr = get_attr("height");
+		if (w_attr && h_attr)
+		{
+			pos.width = atoi(w_attr);
+			pos.height = atoi(h_attr);
+		}
+		else
+		{
+			// Fall back to actual image size from container
+			litehtml::size sz;
+			get_document()->container()->get_image_size(m_src.c_str(), nullptr, sz);
+			if (sz.width > 0 && sz.height > 0)
+			{
+				pos.width = sz.width;
+				pos.height = sz.height;
+			}
+		}
+	}
 
 	// draw image as background
 	if(pos.does_intersect(clip))

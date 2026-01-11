@@ -448,12 +448,16 @@ litehtml::pixel_t litehtml::flex_line::calculate_items_position(pixel_t containe
 												  flex_justify_content justify_content,
 												  bool is_row_direction,
 												  const containing_block_context &self_size,
-												  formatting_context *fmt_ctx)
+												  formatting_context *fmt_ctx,
+												  pixel_t main_gap)
 {
+	/// Account for gaps in free space calculation
+	pixel_t total_gap = (items.size() > 1) ? main_gap * (pixel_t)(items.size() - 1) : 0;
+
 	/// Distribute main axis free space for auto-margins
-	pixel_t free_main_size = container_main_size - main_size;
+	pixel_t free_main_size = container_main_size - main_size - total_gap;
 	distribute_main_auto_margins(free_main_size);
-	free_main_size = container_main_size - main_size;
+	free_main_size = container_main_size - main_size - total_gap;
 
 	/// Fix justify-content property
 	switch (justify_content)
@@ -533,8 +537,16 @@ litehtml::pixel_t litehtml::flex_line::calculate_items_position(pixel_t containe
 	pixel_t height =  0;
 
 	pixel_t distribute_step = 1;
+	bool is_first_item = true;
 	for(auto &item : items)
 	{
+		// Add gap before item (except first)
+		if(!is_first_item && main_gap > 0)
+		{
+			main_pos += main_gap;
+		}
+		is_first_item = false;
+
 		main_pos += add_before_item;
 		if(add_before_item > 0 && item_remainder > 0)
 		{

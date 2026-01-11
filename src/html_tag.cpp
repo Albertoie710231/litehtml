@@ -181,22 +181,27 @@ litehtml::element::ptr litehtml::html_tag::select_one( const css_selector& selec
 
 void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
 {
-	for(const auto& sel : stylesheet.selectors())
+	// Push this element to the bloom filter for ancestor matching
+	auto doc = get_document();
+	if (doc)
 	{
-		// optimization
-		{
-			const auto& r = sel->m_right;
-			if (r.m_tag != star_id && r.m_tag != m_tag)
-				continue;
+		doc->get_selector_filter().push_element(m_tag, m_id, m_classes);
+	}
 
-			if (!r.m_attrs.empty())
-			{
-				const auto& attr = r.m_attrs[0];
-				if (attr.type == select_class && !(attr.name in m_classes))
-					continue;
-			}
-		}
+	// Use indexed lookup for better performance with large stylesheets
+	css_selector::vector potential_selectors;
+	if (stylesheet.has_index())
+	{
+		stylesheet.get_potentially_matching_selectors(m_tag, m_classes, m_id, potential_selectors);
+	}
+	else
+	{
+		// Fallback to all selectors
+		potential_selectors = stylesheet.selectors();
+	}
 
+	for(const auto& sel : potential_selectors)
+	{
 		int apply = select(*sel, false);
 
 		if(apply != select_no_match)
@@ -275,6 +280,12 @@ void litehtml::html_tag::apply_stylesheet( const litehtml::css& stylesheet )
 			el->apply_stylesheet(stylesheet);
 		}
 	}
+
+	// Pop this element from the bloom filter
+	if (doc)
+	{
+		doc->get_selector_filter().pop_element();
+	}
 }
 
 void litehtml::html_tag::get_content_size( size& sz, pixel_t max_width )
@@ -341,17 +352,36 @@ bool html_tag::get_custom_property(string_id name, css_token_vector& result) con
 
 void litehtml::html_tag::compute_styles(bool recursive)
 {
-	const char* style = get_attr("style");
+	const char* style_attr = get_attr("style");
 	document::ptr doc = get_document();
 
-	if (style)
+	if (style_attr)
 	{
-		m_style.add(style, "", doc->container());
+		m_style.add(style_attr, "", doc->container());
 	}
 
 	m_style.subst_vars(this);
 
-	m_css.compute(this, doc);
+	// Try to use cached style for similar elements (style sharing)
+	// Use parent element pointer as hash - siblings share same parent so can share styles
+	element::ptr el_parent = parent();
+	size_t parent_style_hash = el_parent ? std::hash<element*>{}(el_parent.get()) : 0;
+
+	// Compute style hash for cache lookup
+	size_t style_hash = m_style.hash();
+
+	const css_properties* cached = doc->get_style_cache().find(m_tag, m_classes, style_hash, parent_style_hash);
+	if (cached)
+	{
+		// Found cached style - copy it instead of recomputing
+		m_css = *cached;
+	}
+	else
+	{
+		// Compute style and cache it
+		m_css.compute(this, doc);
+		doc->get_style_cache().store(m_tag, m_classes, style_hash, parent_style_hash, m_css);
+	}
 
 	if (recursive)
 	{
@@ -714,6 +744,39 @@ int html_tag::select_attribute(const css_attribute_selector& sel)
 
 element::ptr html_tag::find_ancestor(const css_selector& selector, bool apply_pseudo, bool* is_pseudo)
 {
+	// Fast-reject using bloom filter: check if required identifiers exist in ancestor chain
+	auto doc = get_document();
+	if (doc)
+	{
+		const auto& filter = doc->get_selector_filter();
+		const auto& right = selector.m_right;
+
+		// Check tag
+		if (right.m_tag != star_id && !filter.might_have_ancestor_with_tag(right.m_tag))
+		{
+			return nullptr;  // Fast reject: no ancestor has this tag
+		}
+
+		// Check classes and id in attrs
+		for (const auto& attr : right.m_attrs)
+		{
+			if (attr.type == select_class)
+			{
+				if (!filter.might_have_ancestor_with_class(attr.name))
+				{
+					return nullptr;  // Fast reject: no ancestor has this class
+				}
+			}
+			else if (attr.type == select_id)
+			{
+				if (!filter.might_have_ancestor_with_id(attr.name))
+				{
+					return nullptr;  // Fast reject: no ancestor has this id
+				}
+			}
+		}
+	}
+
 	element::ptr el_parent = parent();
 	if (!el_parent)
 	{
@@ -875,6 +938,13 @@ void litehtml::html_tag::draw_background(uint_ptr hdc, pixel_t x, pixel_t y, con
 			auto v_offset = ri->get_draw_vertical_offset();
 			pos.y += v_offset;
 			pos.height -= v_offset;
+
+			// Draw box shadows before background
+			const auto& shadows = m_css.get_box_shadows();
+			if(!shadows.empty())
+			{
+				get_document()->container()->draw_box_shadow(hdc, shadows, border_box);
+			}
 
 			const background* bg = get_background();
 			if(bg)

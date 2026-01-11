@@ -138,6 +138,108 @@ void css::sort_selectors()
 			 return (*v1) < (*v2);
 		 }
 	);
+	// Build index for fast selector lookup
+	build_index();
+}
+
+void css::index_selector(const css_selector::ptr& selector)
+{
+	const auto& right = selector->m_right;
+
+	// Index by tag (unless it's universal *)
+	if (right.m_tag != star_id)
+	{
+		m_tag_index[right.m_tag].push_back(selector);
+		return; // Tag is the primary key, don't add to other indexes
+	}
+
+	// For * selectors, check if there's a class or id in attrs
+	for (const auto& attr : right.m_attrs)
+	{
+		if (attr.type == select_class)
+		{
+			m_class_index[attr.name].push_back(selector);
+			return; // Indexed by first class
+		}
+		else if (attr.type == select_id)
+		{
+			m_id_index[attr.name].push_back(selector);
+			return; // Indexed by id
+		}
+	}
+
+	// Pure universal selector (*) or attribute selector without tag/class/id
+	m_universal_selectors.push_back(selector);
+}
+
+void css::build_index()
+{
+	if (m_index_built) return;
+
+	// Reserve approximate sizes to avoid reallocations
+	m_tag_index.reserve(m_selectors.size() / 4);
+	m_class_index.reserve(m_selectors.size() / 2);
+	m_id_index.reserve(m_selectors.size() / 8);
+	m_universal_selectors.reserve(m_selectors.size() / 20);
+
+	for (const auto& selector : m_selectors)
+	{
+		index_selector(selector);
+	}
+
+	m_index_built = true;
+}
+
+void css::get_potentially_matching_selectors(
+	string_id tag,
+	const std::vector<string_id>& classes,
+	string_id id,
+	css_selector::vector& out_selectors) const
+{
+	if (!m_index_built)
+	{
+		// Fallback to all selectors if index not built
+		out_selectors = m_selectors;
+		return;
+	}
+
+	out_selectors.clear();
+
+	// Add selectors that match by tag
+	auto tag_it = m_tag_index.find(tag);
+	if (tag_it != m_tag_index.end())
+	{
+		out_selectors.insert(out_selectors.end(), tag_it->second.begin(), tag_it->second.end());
+	}
+
+	// Add selectors that match by any class
+	for (const auto& cls : classes)
+	{
+		auto class_it = m_class_index.find(cls);
+		if (class_it != m_class_index.end())
+		{
+			out_selectors.insert(out_selectors.end(), class_it->second.begin(), class_it->second.end());
+		}
+	}
+
+	// Add selectors that match by id
+	if (id != empty_id)
+	{
+		auto id_it = m_id_index.find(id);
+		if (id_it != m_id_index.end())
+		{
+			out_selectors.insert(out_selectors.end(), id_it->second.begin(), id_it->second.end());
+		}
+	}
+
+	// Add universal selectors (they always need to be checked)
+	out_selectors.insert(out_selectors.end(), m_universal_selectors.begin(), m_universal_selectors.end());
+
+	// Sort by order to maintain cascade order
+	std::sort(out_selectors.begin(), out_selectors.end(),
+		[](const css_selector::ptr& a, const css_selector::ptr& b) {
+			return *a < *b;
+		});
 }
 
 } // namespace litehtml

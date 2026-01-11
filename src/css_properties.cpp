@@ -1,6 +1,7 @@
 #include "html.h"
 #include "css_properties.h"
 #include <cmath>
+#include <sstream>
 #include "document.h"
 #include "html_tag.h"
 #include "document_container.h"
@@ -223,6 +224,123 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 	m_z_index = el->get_property<css_length>(_z_index_, false, _auto, offset(m_z_index));
 	m_content = el->get_property<string>(_content_, false, "", offset(m_content));
 	m_cursor = el->get_property<string>(_cursor_, true, "auto", offset(m_cursor));
+	m_opacity = el->get_property<float>(_opacity_, false, 1.0f, offset(m_opacity));
+
+	// Parse box-shadow
+	string box_shadow_str = el->get_property<string>(_box_shadow_, false, "", offset(m_box_shadows));
+	m_box_shadows.clear();
+	if (!box_shadow_str.empty() && box_shadow_str != "none")
+	{
+		// Simple parsing: split by comma for multiple shadows
+		// Each shadow: [inset] offset-x offset-y [blur] [spread] [color]
+		// For now, parse basic format: offset-x offset-y blur spread color
+		size_t pos = 0;
+		while (pos < box_shadow_str.size())
+		{
+			// Find next comma or end
+			size_t comma = box_shadow_str.find(',', pos);
+			if (comma == string::npos) comma = box_shadow_str.size();
+
+			string shadow_part = box_shadow_str.substr(pos, comma - pos);
+
+			// Trim whitespace
+			size_t start = shadow_part.find_first_not_of(" \t");
+			size_t end = shadow_part.find_last_not_of(" \t");
+			if (start != string::npos && end != string::npos)
+			{
+				shadow_part = shadow_part.substr(start, end - start + 1);
+
+				box_shadow shadow;
+				bool inset = false;
+
+				// Check for "inset" keyword
+				if (shadow_part.find("inset") == 0)
+				{
+					inset = true;
+					shadow_part = shadow_part.substr(5);
+					start = shadow_part.find_first_not_of(" \t");
+					if (start != string::npos)
+						shadow_part = shadow_part.substr(start);
+				}
+
+				// Parse values: try to extract numbers and color
+				// Simplified: expect "Xpx Ypx [blur] [spread] [color]"
+				std::vector<float> numbers;
+				web_color color(0, 0, 0, 128); // Default shadow color (semi-transparent black)
+
+				std::istringstream iss(shadow_part);
+				string token;
+				while (iss >> token)
+				{
+					// Try to parse as number with units
+					bool is_number = false;
+					float val = 0;
+					if (!token.empty())
+					{
+						char* endptr;
+						val = strtof(token.c_str(), &endptr);
+						if (endptr != token.c_str())
+						{
+							is_number = true;
+							numbers.push_back(val);
+						}
+					}
+
+					// If not a number, might be a color - handle basic formats
+					if (!is_number && !token.empty())
+					{
+						// Handle hex colors (#rgb, #rrggbb, #rrggbbaa)
+						if (token[0] == '#' && token.size() >= 4)
+						{
+							unsigned int r = 0, g = 0, b = 0, a = 255;
+							if (token.size() == 4) // #rgb
+							{
+								sscanf(token.c_str(), "#%1x%1x%1x", &r, &g, &b);
+								r *= 17; g *= 17; b *= 17;
+							}
+							else if (token.size() == 7) // #rrggbb
+							{
+								sscanf(token.c_str(), "#%2x%2x%2x", &r, &g, &b);
+							}
+							else if (token.size() == 9) // #rrggbbaa
+							{
+								sscanf(token.c_str(), "#%2x%2x%2x%2x", &r, &g, &b, &a);
+							}
+							color = web_color((byte)r, (byte)g, (byte)b, (byte)a);
+						}
+						// Handle basic named colors
+						else if (token == "black") color = web_color(0, 0, 0, 255);
+						else if (token == "white") color = web_color(255, 255, 255, 255);
+						else if (token == "red") color = web_color(255, 0, 0, 255);
+						else if (token == "green") color = web_color(0, 128, 0, 255);
+						else if (token == "blue") color = web_color(0, 0, 255, 255);
+						else if (token == "gray" || token == "grey") color = web_color(128, 128, 128, 255);
+						else if (token == "transparent") color = web_color(0, 0, 0, 0);
+						// Handle rgba() format - simplified
+						else if (token.find("rgba(") == 0 || token.find("rgb(") == 0)
+						{
+							// For rgba, we'd need to handle multi-token parsing
+							// Skip for now - use default color
+						}
+					}
+				}
+
+				// Assign parsed values
+				if (numbers.size() >= 2)
+				{
+					shadow.offset_x = numbers[0];
+					shadow.offset_y = numbers[1];
+					if (numbers.size() >= 3) shadow.blur_radius = numbers[2];
+					if (numbers.size() >= 4) shadow.spread_radius = numbers[3];
+					shadow.color = color;
+					shadow.inset = inset;
+					m_box_shadows.push_back(shadow);
+				}
+			}
+
+			pos = comma + 1;
+		}
+	}
 
 	m_css_text_indent = el->get_property<css_length>(_text_indent_, true, 0, offset(m_css_text_indent));
 	doc->cvt_units(m_css_text_indent, m_font_metrics, 0);
@@ -254,6 +372,7 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 
 	compute_background(el, doc);
 	compute_flex(el, doc);
+	compute_grid(el, doc);
 }
 
 // used for all color properties except `color` (color:currentcolor is converted to color:inherit during parsing)
@@ -508,6 +627,12 @@ void litehtml::css_properties::compute_flex(const html_tag* el, const document::
 		m_flex_justify_content = (flex_justify_content) el->get_property<int>(_justify_content_, false, flex_justify_content_flex_start, offset(m_flex_justify_content));
 		m_flex_align_items = (flex_align_items) el->get_property<int>(_align_items_, false, flex_align_items_normal, offset(m_flex_align_items));
 		m_flex_align_content = (flex_align_content) el->get_property<int>(_align_content_, false, flex_align_content_stretch, offset(m_flex_align_content));
+
+		// Gap properties
+		m_flex_row_gap = el->get_property<css_length>(_row_gap_, false, 0, offset(m_flex_row_gap));
+		m_flex_column_gap = el->get_property<css_length>(_column_gap_, false, 0, offset(m_flex_column_gap));
+		doc->cvt_units(m_flex_row_gap, m_font_metrics, 0);
+		doc->cvt_units(m_flex_column_gap, m_font_metrics, 0);
 	}
 	m_flex_align_self = (flex_align_items) el->get_property<int>(_align_self_, false, flex_align_items_auto, offset(m_flex_align_self));
 	auto parent = el->parent();
@@ -531,6 +656,47 @@ void litehtml::css_properties::compute_flex(const html_tag* el, const document::
 		} else if(m_display == display_inline_flex)
 		{
 			m_display = display_flex;
+		}
+	}
+}
+
+void litehtml::css_properties::compute_grid(const html_tag* el, const document::ptr& doc)
+{
+	if (m_display == display_grid || m_display == display_inline_grid)
+	{
+		// Grid container properties
+		m_grid_template_columns = el->get_property<string>(_grid_template_columns_, false, "", offset(m_grid_template_columns));
+		m_grid_template_rows = el->get_property<string>(_grid_template_rows_, false, "", offset(m_grid_template_rows));
+
+		// Gap properties (reuse flex gap - they're the same CSS properties)
+		m_flex_row_gap = el->get_property<css_length>(_row_gap_, false, 0, offset(m_flex_row_gap));
+		m_flex_column_gap = el->get_property<css_length>(_column_gap_, false, 0, offset(m_flex_column_gap));
+		doc->cvt_units(m_flex_row_gap, m_font_metrics, 0);
+		doc->cvt_units(m_flex_column_gap, m_font_metrics, 0);
+	}
+
+	// Grid item properties (apply to children of grid containers)
+	auto parent = el->parent();
+	if (parent && (parent->css().m_display == display_grid || parent->css().m_display == display_inline_grid))
+	{
+		m_grid_column_start = el->get_property<int>(_grid_column_start_, false, 0, offset(m_grid_column_start));
+		m_grid_column_end = el->get_property<int>(_grid_column_end_, false, 0, offset(m_grid_column_end));
+		m_grid_row_start = el->get_property<int>(_grid_row_start_, false, 0, offset(m_grid_row_start));
+		m_grid_row_end = el->get_property<int>(_grid_row_end_, false, 0, offset(m_grid_row_end));
+
+		// Blockify grid items (similar to flex items)
+		if(m_display == display_inline || m_display == display_inline_block)
+		{
+			m_display = display_block;
+		} else if(m_display == display_inline_table)
+		{
+			m_display = display_table;
+		} else if(m_display == display_inline_flex)
+		{
+			m_display = display_flex;
+		} else if(m_display == display_inline_grid)
+		{
+			m_display = display_grid;
 		}
 	}
 }

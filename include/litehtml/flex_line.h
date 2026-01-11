@@ -43,7 +43,8 @@ namespace litehtml
 									  flex_justify_content justify_content,
 									  bool is_row_direction,
 									  const containing_block_context &self_size,
-									  formatting_context *fmt_ctx);
+									  formatting_context *fmt_ctx,
+									  pixel_t main_gap = 0);
 	protected:
 		void distribute_free_space(pixel_t container_main_size);
 		void distribute_free_space_grow(pixel_t container_main_size);

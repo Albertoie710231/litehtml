@@ -6,6 +6,8 @@
 #include "master_css.h"
 #include "encodings.h"
 #include "font_description.h"
+#include "selector_filter.h"
+#include "style_cache.h"
 
 typedef struct GumboInternalOutput GumboOutput;
 
@@ -70,14 +72,19 @@ namespace litehtml
 		string								m_culture;
 		string								m_text;
 		document_mode						m_mode = no_quirks_mode;
+		selector_filter						m_selector_filter;  // Bloom filter for fast ancestor matching
+		style_cache							m_style_cache;      // Style sharing cache for similar elements
 	public:
 		document(document_container* objContainer);
 		virtual ~document();
 
 		document_container*				container()	{ return m_container; }
 		document_mode					mode() const { return m_mode; }
+		selector_filter&				get_selector_filter() { return m_selector_filter; }
+		style_cache&					get_style_cache() { return m_style_cache; }
 		uint_ptr						get_font(const font_description& descr, font_metrics* fm);
 		pixel_t							render(pixel_t max_width, render_type rt = render_all);
+		pixel_t							render(pixel_t max_width, render_type rt, bool incremental_layout);
 		void							draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip);
 		web_color						get_def_color()	{ return m_def_color; }
 		void 							cvt_units(css_length& val, const font_metrics& metrics, pixel_t size) const;

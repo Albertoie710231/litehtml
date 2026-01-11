@@ -179,10 +179,8 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_block::init()
 
     ret->src_el()->add_render(ret);
 
-    for(auto& el : ret->children())
-    {
-        el = el->init();
-    }
+    // Children are NOT initialized here - init_tree() handles that iteratively
+    // to avoid stack overflow on deeply nested DOMs
 
     return ret;
 }

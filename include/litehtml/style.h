@@ -66,6 +66,18 @@ namespace litehtml
 
 		void subst_vars(const html_tag* el);
 
+		// Compute hash for style sharing cache
+		size_t hash() const
+		{
+			size_t h = 0;
+			for (const auto& prop : m_properties)
+			{
+				h ^= std::hash<int>{}(static_cast<int>(prop.first)) + 0x9e3779b9 + (h << 6) + (h >> 2);
+				h ^= prop.second.index() + 0x9e3779b9 + (h << 6) + (h >> 2);
+			}
+			return h;
+		}
+
 	private:
 		void inherit_property(string_id name, bool important);
 

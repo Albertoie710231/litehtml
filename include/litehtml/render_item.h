@@ -26,6 +26,7 @@ namespace litehtml
         margins						                m_borders;
         position					                m_pos;
         bool                                        m_skip;
+        bool                                        m_needs_layout;  // Deferred layout pending
         std::vector<std::shared_ptr<render_item>>   m_positioned;
 
 		containing_block_context calculate_containing_block_context(const containing_block_context& cb_context);
@@ -58,6 +59,16 @@ namespace litehtml
         void skip(bool val)
         {
             m_skip = val;
+        }
+
+        bool needs_layout() const
+        {
+            return m_needs_layout;
+        }
+
+        void needs_layout(bool val)
+        {
+            m_needs_layout = val;
         }
 
         pixel_t right() const
@@ -385,6 +396,10 @@ namespace litehtml
         pixel_t calc_auto_margins(pixel_t parent_width);	// returns left margin
 
         virtual std::shared_ptr<render_item> init();
+
+        // Iterative tree initialization to avoid stack overflow on deeply nested DOMs
+        static std::shared_ptr<render_item> init_tree(std::shared_ptr<render_item> root);
+
         virtual void apply_vertical_align() {}
 		/**
 		 * Get first baseline position. Default position is element bottom without bottom margin.
@@ -406,7 +421,7 @@ namespace litehtml
                 std::shared_ptr<litehtml::render_item>,
                 std::shared_ptr<litehtml::render_item>
                 > split_inlines();
-        bool fetch_positioned();
+        bool fetch_positioned(int depth = 0);
         void render_positioned(render_type rt = render_all);
 		// returns element offset related to the containing block
 		std::tuple<pixel_t, pixel_t> element_static_offset(const std::shared_ptr<litehtml::render_item> &el);
@@ -417,11 +432,11 @@ namespace litehtml
 		virtual void set_inline_boxes( position::vector& /*boxes*/ ) {};
 		virtual void add_inline_box( const position& /*box*/ ) {};
 		virtual void clear_inline_boxes() {};
-        void draw_stacking_context( uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, bool with_positioned );
-        virtual void draw_children( uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, draw_flag flag, int zindex );
+        void draw_stacking_context( uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, bool with_positioned, int depth = 0 );
+        virtual void draw_children( uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, draw_flag flag, int zindex, int depth = 0 );
         virtual pixel_t get_draw_vertical_offset() { return 0; }
-        virtual std::shared_ptr<element> get_child_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, draw_flag flag, int zindex);
-        std::shared_ptr<element> get_element_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y);
+        virtual std::shared_ptr<element> get_child_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, draw_flag flag, int zindex, int depth = 0);
+        std::shared_ptr<element> get_element_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, int depth = 0);
         bool is_point_inside( pixel_t x, pixel_t y );
         void dump(litehtml::dumper& cout);
 		position get_placement() const;

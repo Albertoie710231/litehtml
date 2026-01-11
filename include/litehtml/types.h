@@ -350,6 +350,11 @@ namespace litehtml
 		int context_idx;
 		uint32_t size_mode;
 
+		// Incremental layout support: defer layout of elements beyond this threshold
+		pixel_t deferred_layout_threshold;  // Y position beyond which to defer detailed layout
+		pixel_t current_document_y;         // Current Y position in document coordinates
+		bool incremental_layout_enabled;    // Whether incremental layout is active
+
 		containing_block_context() :
 				width(0, cbc_value_type_auto),
 				render_width(0, cbc_value_type_auto),
@@ -359,7 +364,10 @@ namespace litehtml
 				min_height(0, cbc_value_type_none),
 				max_height(0, cbc_value_type_none),
 				context_idx(0),
-				size_mode(size_mode_normal)
+				size_mode(size_mode_normal),
+				deferred_layout_threshold(0),
+				current_document_y(0),
+				incremental_layout_enabled(false)
 		{}
 
 		containing_block_context new_width(pixel_t w, uint32_t _size_mode = size_mode_normal) const
@@ -382,7 +390,7 @@ namespace litehtml
 		}
 	};
 
-#define  style_display_strings		"none;block;inline;inline-block;inline-table;list-item;table;table-caption;table-cell;table-column;table-column-group;table-footer-group;table-header-group;table-row;table-row-group;inline-text;flex;inline-flex"
+#define  style_display_strings		"none;block;inline;inline-block;inline-table;list-item;table;table-caption;table-cell;table-column;table-column-group;table-footer-group;table-header-group;table-row;table-row-group;inline-text;flex;inline-flex;grid;inline-grid"
 
 	enum style_display
 	{
@@ -404,6 +412,8 @@ namespace litehtml
 		display_inline_text,
 		display_flex,
 		display_inline_flex,
+		display_grid,
+		display_inline_grid,
 	};
 
 #define  font_size_strings		"xx-small;x-small;small;medium;large;x-large;xx-large;smaller;larger"

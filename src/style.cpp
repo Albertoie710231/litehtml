@@ -498,6 +498,159 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 			add_parsed_property(name, property_value((int)val.n.number, important));
 		break;
 
+	case _row_gap_:    // <length-percentage>  https://developer.mozilla.org/en-US/docs/Web/CSS/row-gap
+	case _column_gap_: // <length-percentage>  https://developer.mozilla.org/en-US/docs/Web/CSS/column-gap
+		add_length_property(name, val, "normal", f_length_percentage|f_positive, important);
+		break;
+
+	case _gap_: // <'row-gap'> <'column-gap'>?  https://developer.mozilla.org/en-US/docs/Web/CSS/gap
+		{
+			// gap is shorthand for row-gap and column-gap
+			css_length row_gap, col_gap;
+			if (parse_length(val, row_gap, f_length_percentage|f_positive, "normal"))
+			{
+				// If only one value, both gaps are the same
+				col_gap = row_gap;
+				// Check for second value
+				if (value.size() > 1)
+				{
+					css_length second;
+					if (parse_length(value[1], second, f_length_percentage|f_positive, "normal"))
+						col_gap = second;
+				}
+				add_parsed_property(_row_gap_, property_value(row_gap, important));
+				add_parsed_property(_column_gap_, property_value(col_gap, important));
+			}
+		}
+		break;
+
+	case _opacity_: // <number [0,1]>  https://developer.mozilla.org/en-US/docs/Web/CSS/opacity
+		if (val.type == NUMBER)
+		{
+			float opacity = std::max(0.0f, std::min(1.0f, val.n.number));
+			add_parsed_property(name, property_value(opacity, important));
+		}
+		break;
+
+	case _box_shadow_: // https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
+		// box-shadow: [inset?] <offset-x> <offset-y> [<blur-radius>]? [<spread-radius>]? [<color>]?
+		// Multiple shadows comma-separated
+		// For now, store as raw string and parse in css_properties
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	//  =============================  GRID  =============================
+
+	case _grid_template_columns_:
+	case _grid_template_rows_:
+		// Store as raw string - parsing happens during layout
+		// Examples: "100px 1fr 2fr", "repeat(3, 1fr)", "minmax(100px, 1fr)"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _grid_column_start_:
+	case _grid_column_end_:
+	case _grid_row_start_:
+	case _grid_row_end_:
+		// Grid line number or "auto" or "span N"
+		if (val.type == NUMBER && val.n.number_type == css_number_integer)
+		{
+			add_parsed_property(name, property_value((int)val.n.number, important));
+		}
+		else if (val.type == IDENT && val.ident() == "auto")
+		{
+			add_parsed_property(name, property_value(0, important)); // 0 means auto
+		}
+		else if (val.type == IDENT && val.ident() == "span" && value.size() > 1)
+		{
+			// Handle "span N" - store as negative to indicate span
+			auto& span_val = value[1];
+			if (span_val.type == NUMBER && span_val.n.number_type == css_number_integer)
+			{
+				add_parsed_property(name, property_value(-(int)span_val.n.number, important));
+			}
+		}
+		break;
+
+	case _grid_column_: // shorthand for grid-column-start / grid-column-end
+		{
+			int start = 0, end = 0;
+			if (val.type == NUMBER && val.n.number_type == css_number_integer)
+			{
+				start = (int)val.n.number;
+				end = start + 1; // Default: span 1
+				// Check for "/" separator and second value
+				for (size_t i = 1; i < value.size(); i++)
+				{
+					if (value[i].ch == '/' && i + 1 < value.size())
+					{
+						auto& end_val = value[i + 1];
+						if (end_val.type == NUMBER && end_val.n.number_type == css_number_integer)
+						{
+							end = (int)end_val.n.number;
+						}
+						break;
+					}
+				}
+				add_parsed_property(_grid_column_start_, property_value(start, important));
+				add_parsed_property(_grid_column_end_, property_value(end, important));
+			}
+		}
+		break;
+
+	case _grid_row_: // shorthand for grid-row-start / grid-row-end
+		{
+			int start = 0, end = 0;
+			if (val.type == NUMBER && val.n.number_type == css_number_integer)
+			{
+				start = (int)val.n.number;
+				end = start + 1; // Default: span 1
+				// Check for "/" separator and second value
+				for (size_t i = 1; i < value.size(); i++)
+				{
+					if (value[i].ch == '/' && i + 1 < value.size())
+					{
+						auto& end_val = value[i + 1];
+						if (end_val.type == NUMBER && end_val.n.number_type == css_number_integer)
+						{
+							end = (int)end_val.n.number;
+						}
+						break;
+					}
+				}
+				add_parsed_property(_grid_row_start_, property_value(start, important));
+				add_parsed_property(_grid_row_end_, property_value(end, important));
+			}
+		}
+		break;
+
+	case _grid_area_: // shorthand: row-start / column-start / row-end / column-end
+		// For now, just store as string - complex parsing needed
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _grid_auto_columns_:
+	case _grid_auto_rows_:
+		// Store as raw string for now
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _grid_auto_flow_:
+		// Values: row | column | dense | row dense | column dense
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _grid_template_areas_:
+		// Store as raw string - complex parsing needed
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
 	//  =============================  COUNTER, CONTENT  =============================
 
 	case _counter_increment_:

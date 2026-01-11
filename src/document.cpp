@@ -7,6 +7,7 @@
 #include "el_space.h"
 #include "el_body.h"
 #include "el_image.h"
+#include "el_svg.h"
 #include "el_table.h"
 #include "el_td.h"
 #include "el_link.h"
@@ -39,6 +40,65 @@ document::document(document_container* container)
 document::~document()
 {
 	m_over_element = m_active_element = nullptr;
+
+	// Iteratively destroy render tree to prevent stack overflow from deeply nested structures
+	// (Wikipedia pages can have 190,000+ nested elements)
+	if (m_root_render)
+	{
+		std::vector<std::shared_ptr<render_item>> render_nodes;
+		render_nodes.reserve(10000);  // Pre-allocate for large pages
+		render_nodes.push_back(m_root_render);
+
+		// Collect all render nodes breadth-first
+		for (size_t i = 0; i < render_nodes.size(); ++i)
+		{
+			auto& node = render_nodes[i];
+			for (auto& child : node->children())
+			{
+				render_nodes.push_back(child);
+			}
+		}
+
+		// Clear all children - this breaks the parent->child shared_ptr links
+		for (auto& node : render_nodes)
+		{
+			node->children().clear();
+		}
+
+		// Now nodes will be destroyed iteratively as vector goes out of scope
+		m_root_render.reset();
+	}
+
+	// Iteratively destroy element tree
+	if (m_root)
+	{
+		std::vector<std::shared_ptr<element>> element_nodes;
+		element_nodes.reserve(10000);
+		element_nodes.push_back(m_root);
+
+		// Collect all element nodes breadth-first
+		for (size_t i = 0; i < element_nodes.size(); ++i)
+		{
+			auto& node = element_nodes[i];
+			for (auto& child : node->m_children)  // document is friend of element
+			{
+				element_nodes.push_back(child);
+			}
+		}
+
+		// Clear all children - break the shared_ptr links
+		// (document is a friend of element, so we can access m_children directly)
+		for (auto& node : element_nodes)
+		{
+			node->m_children.clear();
+		}
+
+		m_root.reset();
+	}
+
+	// Clear tabular elements list
+	m_tabular_elements.clear();
+
 	if(m_container)
 	{
 		for(auto& font : m_fonts)
@@ -139,10 +199,11 @@ document::ptr document::createFromString(
 		doc->fix_tables_layout();
 
 		// Finally initialize elements
+		// init_tree() uses iterative approach to avoid stack overflow on deeply nested DOMs
 		// init() returns pointer to the render_init element because it can change its type
 		if(doc->m_root_render)
 		{
-			doc->m_root_render = doc->m_root_render->init();
+			doc->m_root_render = render_item::init_tree(doc->m_root_render);
 		}
 	}
 
@@ -377,6 +438,10 @@ element::ptr document::create_element(const char* tag_name, const string_map& at
 		{
 			newTag = std::make_shared<el_image>(this_doc);
 		}
+		else if (!strcmp(tag_name, "svg"))
+		{
+			newTag = std::make_shared<el_svg>(this_doc);
+		}
 		else if (!strcmp(tag_name, "table"))
 		{
 			newTag = std::make_shared<el_table>(this_doc);
@@ -488,6 +553,12 @@ uint_ptr document::get_font( const font_description& descr, font_metrics* fm )
 
 pixel_t document::render( pixel_t max_width, render_type rt )
 {
+	// Call with incremental layout disabled by default
+	return render(max_width, rt, false);
+}
+
+pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_layout )
+{
 	pixel_t ret = 0;
 	if(m_root && m_root_render)
 	{
@@ -498,6 +569,14 @@ pixel_t document::render( pixel_t max_width, render_type rt )
 		cb_context.width.type = containing_block_context::cbc_value_type_absolute;
 		cb_context.height = viewport.height;
 		cb_context.height.type = containing_block_context::cbc_value_type_absolute;
+
+		// Incremental layout: only fully layout elements within 2x viewport height
+		if (incremental_layout)
+		{
+			cb_context.incremental_layout_enabled = true;
+			cb_context.deferred_layout_threshold = viewport.height * 2;
+			cb_context.current_document_y = 0;
+		}
 
 		if(rt == render_fixed_only)
 		{

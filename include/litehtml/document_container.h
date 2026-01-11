@@ -9,9 +9,12 @@
 #include "font_description.h"
 #include <memory>
 #include <functional>
+#include <vector>
 
 namespace litehtml
 {
+	struct box_shadow;  // Forward declaration
+
 	struct list_marker
 	{
 		string			image;
@@ -49,6 +52,7 @@ namespace litehtml
 		virtual void				draw_radial_gradient(litehtml::uint_ptr hdc, const background_layer& layer, const background_layer::radial_gradient& gradient) = 0;
 		virtual void				draw_conic_gradient(litehtml::uint_ptr hdc, const background_layer& layer, const background_layer::conic_gradient& gradient) = 0;
 		virtual void				draw_borders(litehtml::uint_ptr hdc, const litehtml::borders& borders, const litehtml::position& draw_pos, bool root) = 0;
+		virtual void				draw_box_shadow(litehtml::uint_ptr hdc, const std::vector<box_shadow>& shadows, const litehtml::position& draw_pos) {}
 
 		virtual	void				set_caption(const char* caption) = 0;
 		virtual	void				set_base_url(const char* base_url) = 0;

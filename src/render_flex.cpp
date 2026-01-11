@@ -159,6 +159,11 @@ litehtml::pixel_t litehtml::render_item_flex::_render_content(pixel_t x, pixel_t
 	/////////////////////////////////////////////////////////////////
 	/// Align flex lines
 	/////////////////////////////////////////////////////////////////
+	// Get the cross gap value based on flex direction
+	pixel_t cross_gap = is_row_direction ? css().get_row_gap().val() : css().get_column_gap().val();
+	pixel_t total_cross_gap = (m_lines.size() > 1) ? cross_gap * (pixel_t)(m_lines.size() - 1) : 0;
+	free_cross_size -= total_cross_gap;
+
 	pixel_t line_pos = 0;
 	pixel_t add_before_line = 0;
 	pixel_t add_after_line = 0;
@@ -195,8 +200,16 @@ litehtml::pixel_t litehtml::render_item_flex::_render_content(pixel_t x, pixel_t
 			}
 			break;
 	}
+	bool is_first_line = true;
 	for(auto &ln : m_lines)
 	{
+		// Add cross gap before line (except first)
+		if(!is_first_line && cross_gap > 0)
+		{
+			line_pos += cross_gap;
+		}
+		is_first_line = false;
+
 		line_pos += add_before_line;
 		ln.cross_start = line_pos;
 		line_pos += ln.cross_size + add_after_line;
@@ -212,13 +225,17 @@ litehtml::pixel_t litehtml::render_item_flex::_render_content(pixel_t x, pixel_t
 	/////////////////////////////////////////////////////////////////
 	/// Align flex items in flex lines
 	/////////////////////////////////////////////////////////////////
+	// Get the gap value based on flex direction
+	pixel_t main_gap = is_row_direction ? css().get_column_gap().val() : css().get_row_gap().val();
+
 	for(auto &ln : m_lines)
 	{
 		pixel_t height = ln.calculate_items_position(container_main_size,
 									justify_content,
 									is_row_direction,
 									self_size,
-									fmt_ctx);
+									fmt_ctx,
+									main_gap);
 		m_pos.height = std::max(m_pos.height, height);
 	}
 
@@ -341,7 +358,8 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_flex::init()
             }
             anon_ri->parent(shared_from_this());
 
-            new_children.push_back(anon_ri->init());
+            // Don't call init() recursively - init_tree() handles that
+            new_children.push_back(anon_ri);
             inlines.clear();
         }
         };
@@ -367,15 +385,17 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_flex::init()
             {
                 // Add block boxes as is
                 el->parent(shared_from_this());
-                new_children.push_back(el->init());
+                // Don't call init() recursively - init_tree() handles that
+                new_children.push_back(el);
             } else
             {
                 // Wrap inlines with anonymous block box
                 auto anon_el = std::make_shared<html_tag>(el->src_el());
                 auto anon_ri = std::make_shared<render_item_block>(anon_el);
-                anon_ri->add_child(el->init());
+                // Don't call init() recursively - init_tree() handles that
+                anon_ri->add_child(el);
                 anon_ri->parent(shared_from_this());
-                new_children.push_back(anon_ri->init());
+                new_children.push_back(anon_ri);
             }
         }
     }

@@ -3,6 +3,7 @@
 
 #include "css_selector.h"
 #include "css_tokenizer.h"
+#include <unordered_map>
 
 namespace litehtml
 {
@@ -43,12 +44,34 @@ public:
 class css
 {
 	css_selector::vector	m_selectors;
+
+	// Selector indexes for fast lookup (avoid O(n*m) matching)
+	std::unordered_map<string_id, css_selector::vector> m_tag_index;    // tag -> selectors
+	std::unordered_map<string_id, css_selector::vector> m_class_index;  // class -> selectors
+	std::unordered_map<string_id, css_selector::vector> m_id_index;     // id -> selectors
+	css_selector::vector m_universal_selectors;  // * selectors (match any element)
+	bool m_index_built = false;
+
 public:
 
 	const css_selector::vector& selectors() const
 	{
 		return m_selectors;
 	}
+
+	// Get selectors that may match an element with given tag, classes, and id
+	// Returns a vector of potentially matching selectors (still need full matching)
+	void get_potentially_matching_selectors(
+		string_id tag,
+		const std::vector<string_id>& classes,
+		string_id id,
+		css_selector::vector& out_selectors) const;
+
+	// Build indexes after all selectors are added (called after sort_selectors)
+	void build_index();
+
+	// Check if index is available
+	bool has_index() const { return m_index_built; }
 
 	template<class Input>
 	void	parse_css_stylesheet(const Input& input, string baseurl, shared_ptr<document> doc, media_query_list_list::ptr media = nullptr, bool top_level = true);
@@ -59,6 +82,7 @@ private:
 	bool	parse_style_rule(raw_rule::ptr rule, string baseurl, shared_ptr<document> doc, media_query_list_list::ptr media);
 	void	parse_import_rule(raw_rule::ptr rule, string baseurl, shared_ptr<document> doc, media_query_list_list::ptr media);
 	void	add_selector(const css_selector::ptr& selector);
+	void	index_selector(const css_selector::ptr& selector);
 };
 
 inline void css::add_selector(const css_selector::ptr& selector)

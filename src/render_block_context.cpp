@@ -11,6 +11,11 @@ litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /
     pixel_t last_margin = 0;
 	std::shared_ptr<render_item> last_margin_el;
     bool is_first = true;
+
+    // Incremental layout: track if we're beyond the viewport threshold
+    containing_block_context child_context = self_size;
+
+
     for (const auto& el : m_children)
     {
         // we don't need to process absolute and fixed positioned element on the second pass
@@ -82,12 +87,57 @@ litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /
                     el->pos().height = el->src_el()->css().get_height().calc_percent(el_parent ? el_parent->pos().height : 0);
                 }
 
-                pixel_t rw = el->render(child_x, child_top, self_size.new_width(child_width), fmt_ctx);
-				// Render table with "width: auto" into returned width
-				if(el->src_el()->css().get_display() == display_table && rw < child_width && el->src_el()->css().get_width().is_predefined())
-				{
-					el->render(child_x, child_top, self_size.new_width(rw), fmt_ctx);
-				}
+                // Incremental layout: check if we should defer this element
+                pixel_t absolute_y = child_context.current_document_y + child_top;
+                bool should_defer = child_context.incremental_layout_enabled &&
+                                   child_context.deferred_layout_threshold > 0 &&
+                                   absolute_y > child_context.deferred_layout_threshold;
+
+                pixel_t rw;
+                if (should_defer)
+                {
+                    // Deferred layout: use estimated dimensions
+                    el->needs_layout(true);
+                    el->pos().x = child_x + el->content_offset_left();
+                    el->pos().y = child_top + el->content_offset_top();
+                    el->pos().width = child_width;
+
+                    // Estimate height based on CSS or default
+                    pixel_t estimated_height = el->src_el()->css().get_height().calc_percent(0);
+                    if (estimated_height <= 0) {
+                        // Default estimate: 50px for blocks, more for tables
+                        if (el->src_el()->css().get_display() == display_table) {
+                            estimated_height = 200;
+                        } else {
+                            estimated_height = 50;
+                        }
+                    }
+                    el->pos().height = estimated_height;
+                    rw = child_width;
+                }
+                else
+                {
+                    // Normal full layout
+                    el->needs_layout(false);
+
+                    // Update context for children - propagate incremental layout flags
+                    containing_block_context render_context = self_size.new_width(child_width);
+                    render_context.current_document_y = child_context.current_document_y + child_top;
+                    render_context.incremental_layout_enabled = child_context.incremental_layout_enabled;
+                    render_context.deferred_layout_threshold = child_context.deferred_layout_threshold;
+
+                    rw = el->render(child_x, child_top, render_context, fmt_ctx);
+                    // Render table with "width: auto" into returned width
+                    if(el->src_el()->css().get_display() == display_table && rw < child_width && el->src_el()->css().get_width().is_predefined())
+                    {
+                        render_context = self_size.new_width(rw);
+                        render_context.current_document_y = child_context.current_document_y + child_top;
+                        render_context.incremental_layout_enabled = child_context.incremental_layout_enabled;
+                        render_context.deferred_layout_threshold = child_context.deferred_layout_threshold;
+                        el->render(child_x, child_top, render_context, fmt_ctx);
+                    }
+                }
+
 				pixel_t auto_margin = el->calc_auto_margins(child_width);
 				if(auto_margin != 0)
 				{
@@ -98,6 +148,9 @@ litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /
                     ret_width = rw;
                 }
                 child_top += el->height();
+                // Update document Y for next sibling
+                child_context.current_document_y += el->height();
+
                 last_margin = el->get_margins().bottom;
 				last_margin_el = el;
                 is_first = false;

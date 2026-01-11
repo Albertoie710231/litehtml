@@ -36,6 +36,7 @@ set(SOURCE_LITEHTML
 	src/element.cpp
 	src/el_font.cpp
 	src/el_image.cpp
+	src/el_svg.cpp
 	src/el_link.cpp
 	src/el_para.cpp
 	src/el_script.cpp
@@ -72,10 +73,12 @@ set(SOURCE_LITEHTML
 	src/render_inline_context.cpp
 	src/render_table.cpp
 	src/render_flex.cpp
+	src/render_grid.cpp
 	src/render_image.cpp
 	src/formatting_context.cpp
 	src/flex_item.cpp
 	src/flex_line.cpp
+	src/grid_item.cpp
 	src/background.cpp
 	src/gradient.cpp
 )
@@ -104,6 +107,7 @@ set(HEADER_LITEHTML
 	include/litehtml/el_div.h
 	include/litehtml/el_font.h
 	include/litehtml/el_image.h
+	include/litehtml/el_svg.h
 	include/litehtml/el_link.h
 	include/litehtml/el_para.h
 	include/litehtml/el_script.h
@@ -136,9 +140,11 @@ set(HEADER_LITEHTML
 	include/litehtml/line_box.h
 	include/litehtml/render_item.h
 	include/litehtml/render_flex.h
+	include/litehtml/render_grid.h
 	include/litehtml/render_image.h
 	include/litehtml/render_inline.h
 	include/litehtml/render_table.h
+	include/litehtml/grid_item.h
 	include/litehtml/render_inline_context.h
 	include/litehtml/render_block_context.h
 	include/litehtml/render_block.h

@@ -22,7 +22,8 @@ namespace litehtml
 		{
 			return std::make_shared<render_item_table>(src_el());
 		}
-		void draw_children(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, draw_flag flag, int zindex) override;
+		void draw_children(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, draw_flag flag, int zindex, int depth = 0) override;
+		std::shared_ptr<element> get_child_by_point(pixel_t x, pixel_t y, pixel_t client_x, pixel_t client_y, draw_flag flag, int zindex, int depth = 0) override;
 		pixel_t get_draw_vertical_offset() override;
 		std::shared_ptr<render_item> init() override;
 	};

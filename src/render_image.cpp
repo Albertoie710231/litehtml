@@ -81,7 +81,9 @@ litehtml::pixel_t litehtml::render_item_image::_render(pixel_t x, pixel_t y, con
             m_pos.width = m_pos.height * sz.width / sz.height;
         } else
         {
-            m_pos.width = sz.width;
+            // Content size unknown - assume square aspect ratio as fallback
+            // Will be corrected on re-layout when image loads
+            m_pos.width = m_pos.height > 0 ? m_pos.height : sz.width;
         }
     } else if(src_el()->css().get_height().is_predefined() && !src_el()->css().get_width().is_predefined())
     {
@@ -102,7 +104,9 @@ litehtml::pixel_t litehtml::render_item_image::_render(pixel_t x, pixel_t y, con
             m_pos.height = m_pos.width * sz.height / sz.width;
         } else
         {
-            m_pos.height = sz.height;
+            // Content size unknown - assume square aspect ratio as fallback
+            // Will be corrected on re-layout when image loads
+            m_pos.height = m_pos.width > 0 ? m_pos.width : sz.height;
         }
     } else
     {
