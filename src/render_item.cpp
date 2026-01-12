@@ -7,7 +7,9 @@
 litehtml::render_item::render_item(std::shared_ptr<element>  _src_el) :
         m_element(std::move(_src_el)),
         m_skip(false),
-        m_needs_layout(false)
+        m_needs_layout(false),
+        m_damage(damage_flags::reflow_all),
+        m_cache_generation(0)
 {
     document::ptr doc = src_el()->get_document();
 	auto fm = css().get_font_metrics();
@@ -1450,4 +1452,155 @@ std::tuple<litehtml::pixel_t, litehtml::pixel_t> litehtml::render_item::element_
 void litehtml::render_item::y_shift(pixel_t delta)
 {
 	m_pos.y += delta;
+}
+
+// ========== Damage Tracking Implementation ==========
+
+void litehtml::render_item::mark_damaged(damage_flags flags)
+{
+	// Add damage to existing flags
+	m_damage |= flags;
+
+	// Invalidate caches when marked damaged
+	if (has_flag(flags, damage_flags::reflow_self) ||
+	    has_flag(flags, damage_flags::reflow_children) ||
+	    has_flag(flags, damage_flags::width_changed))
+	{
+		invalidate_layout_cache();
+	}
+
+	// Propagate to parent if this affects layout
+	if (has_flag(flags, damage_flags::reflow_self) ||
+	    has_flag(flags, damage_flags::width_changed) ||
+	    has_flag(flags, damage_flags::height_changed))
+	{
+		propagate_damage_up(damage_flags::reflow_children);
+	}
+}
+
+void litehtml::render_item::propagate_damage_up(damage_flags flags)
+{
+	auto par = parent();
+	if (par)
+	{
+		// Don't propagate reflow_children as reflow_all, just mark parent needs to reflow children
+		par->m_damage |= flags;
+		par->invalidate_layout_cache();
+
+		// Continue propagation up the tree
+		par->propagate_damage_up(damage_flags::reflow_children);
+	}
+}
+
+bool litehtml::render_item::subtree_needs_layout() const
+{
+	// Check self
+	if (has_flag(m_damage, damage_flags::reflow_self) ||
+	    has_flag(m_damage, damage_flags::reflow_children))
+	{
+		return true;
+	}
+
+	// Check children
+	for (const auto& child : m_children)
+	{
+		if (child->subtree_needs_layout())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// ========== Layout Caching Implementation ==========
+
+litehtml::pixel_t litehtml::render_item::get_cached_min_content_width(pixel_t containing_width) const
+{
+	// Check generation first
+	if (m_cache_generation != layout_generation::current())
+	{
+		return -1;
+	}
+
+	if (m_width_cache.min_content_valid &&
+	    m_width_cache.cached_containing_width == containing_width)
+	{
+		return m_width_cache.min_content_width;
+	}
+
+	return -1;
+}
+
+litehtml::pixel_t litehtml::render_item::get_cached_max_content_width(pixel_t containing_width) const
+{
+	// Check generation first
+	if (m_cache_generation != layout_generation::current())
+	{
+		return -1;
+	}
+
+	if (m_width_cache.max_content_valid &&
+	    m_width_cache.cached_containing_width == containing_width)
+	{
+		return m_width_cache.max_content_width;
+	}
+
+	return -1;
+}
+
+void litehtml::render_item::cache_min_content_width(pixel_t width, pixel_t containing_width)
+{
+	m_width_cache.set_min_content(width, containing_width);
+	m_cache_generation = layout_generation::current();
+}
+
+void litehtml::render_item::cache_max_content_width(pixel_t width, pixel_t containing_width)
+{
+	m_width_cache.set_max_content(width, containing_width);
+	m_cache_generation = layout_generation::current();
+}
+
+void litehtml::render_item::invalidate_layout_cache()
+{
+	m_width_cache.invalidate();
+	m_layout_cache.invalidate();
+}
+
+void litehtml::render_item::invalidate_subtree_cache()
+{
+	invalidate_layout_cache();
+
+	for (auto& child : m_children)
+	{
+		child->invalidate_subtree_cache();
+	}
+}
+
+bool litehtml::render_item::has_cached_layout(pixel_t available_width, pixel_t available_height, uint32_t size_mode) const
+{
+	// Check generation first
+	if (m_cache_generation != layout_generation::current())
+	{
+		return false;
+	}
+
+	// Check if we have damage that requires relayout
+	if (has_flag(m_damage, damage_flags::reflow_self) ||
+	    has_flag(m_damage, damage_flags::reflow_children))
+	{
+		return false;
+	}
+
+	return m_layout_cache.matches(available_width, available_height, size_mode);
+}
+
+void litehtml::render_item::cache_layout_result(pixel_t available_width, pixel_t available_height, uint32_t size_mode,
+                                                 pixel_t width, pixel_t height, pixel_t min_width)
+{
+	m_layout_cache.store(available_width, available_height, size_mode, width, height, min_width);
+	m_cache_generation = layout_generation::current();
+
+	// Clear the damage after successful layout
+	clear_damage();
 }

@@ -10,6 +10,7 @@
 #include "table.h"
 #include "formatting_context.h"
 #include "element.h"
+#include "layout_cache.h"
 
 namespace litehtml
 {
@@ -28,6 +29,12 @@ namespace litehtml
         bool                                        m_skip;
         bool                                        m_needs_layout;  // Deferred layout pending
         std::vector<std::shared_ptr<render_item>>   m_positioned;
+
+        // Layout caching for performance optimization
+        damage_flags                                m_damage;           // What needs recalculation
+        block_width_cache                           m_width_cache;      // Cached min/max content widths
+        layout_result_cache                         m_layout_cache;     // Cached layout results
+        uint32_t                                    m_cache_generation; // Generation for cache validity
 
 		containing_block_context calculate_containing_block_context(const containing_block_context& cb_context);
 		void calc_cb_length(const css_length& len, pixel_t percent_base, containing_block_context::typed_pixel& out_value) const;
@@ -448,6 +455,93 @@ namespace litehtml
          * @return
          */
         void get_rendering_boxes( position::vector& redraw_boxes);
+
+		// ========== Damage Tracking API ==========
+
+		/**
+		 * Get current damage flags for this element
+		 */
+		damage_flags get_damage() const { return m_damage; }
+
+		/**
+		 * Check if element has specific damage
+		 */
+		bool has_damage(damage_flags flag) const { return has_flag(m_damage, flag); }
+
+		/**
+		 * Mark element as damaged (needs recalculation)
+		 * Propagates damage up to ancestors as needed
+		 */
+		void mark_damaged(damage_flags flags);
+
+		/**
+		 * Clear damage flags after layout
+		 */
+		void clear_damage() { m_damage = damage_flags::none; }
+
+		/**
+		 * Propagate damage to parent elements
+		 */
+		void propagate_damage_up(damage_flags flags);
+
+		/**
+		 * Check if this element or any descendant needs layout
+		 */
+		bool subtree_needs_layout() const;
+
+		// ========== Layout Caching API ==========
+
+		/**
+		 * Get cached min-content width, or -1 if not cached
+		 */
+		pixel_t get_cached_min_content_width(pixel_t containing_width) const;
+
+		/**
+		 * Get cached max-content width, or -1 if not cached
+		 */
+		pixel_t get_cached_max_content_width(pixel_t containing_width) const;
+
+		/**
+		 * Store calculated min-content width in cache
+		 */
+		void cache_min_content_width(pixel_t width, pixel_t containing_width);
+
+		/**
+		 * Store calculated max-content width in cache
+		 */
+		void cache_max_content_width(pixel_t width, pixel_t containing_width);
+
+		/**
+		 * Invalidate all layout caches for this element
+		 */
+		void invalidate_layout_cache();
+
+		/**
+		 * Invalidate caches for this element and all descendants
+		 */
+		void invalidate_subtree_cache();
+
+		/**
+		 * Check if layout result is cached for given constraints
+		 */
+		bool has_cached_layout(pixel_t available_width, pixel_t available_height, uint32_t size_mode) const;
+
+		/**
+		 * Get cached layout result (only valid if has_cached_layout returns true)
+		 */
+		const layout_result_cache& get_layout_cache() const { return m_layout_cache; }
+
+		/**
+		 * Store layout result in cache
+		 */
+		void cache_layout_result(pixel_t available_width, pixel_t available_height, uint32_t size_mode,
+		                         pixel_t width, pixel_t height, pixel_t min_width);
+
+		/**
+		 * Get the block width cache (for intrinsic sizing)
+		 */
+		block_width_cache& get_width_cache() { return m_width_cache; }
+		const block_width_cache& get_width_cache() const { return m_width_cache; }
 	};
 }
 

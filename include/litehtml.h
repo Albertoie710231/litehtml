@@ -8,5 +8,6 @@
 #include <litehtml/element.h>
 #include <litehtml/utf8_strings.h>
 #include <litehtml/document_container.h>
+#include <litehtml/layout_cache.h>
 
 #endif  // LITEHTML_H

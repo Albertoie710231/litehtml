@@ -2,6 +2,7 @@
 #include "flex_item.h"
 #include "flex_line.h"
 #include "types.h"
+#include "layout_cache.h"
 
 void litehtml::flex_item::init(const litehtml::containing_block_context &self_size,
 							   litehtml::formatting_context *fmt_ctx, flex_align_items align_items)
@@ -140,10 +141,24 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 	def_value<pixel_t> content_size(0);
 	if (el->css().get_min_width().is_predefined())
 	{
-		min_size = el->render(0, 0,
-							  self_size.new_width(el->content_offset_width(),
-												  containing_block_context::size_mode_content), fmt_ctx);
-		content_size = min_size;
+		// Try to use cached min-content width
+		pixel_t cached_min = el->get_cached_min_content_width(self_size.render_width);
+		if (cached_min >= 0)
+		{
+			layout_cache_stats::width_cache_hits++;
+			min_size = cached_min;
+			content_size = min_size;
+		}
+		else
+		{
+			layout_cache_stats::width_cache_misses++;
+			min_size = el->render(0, 0,
+								  self_size.new_width(el->content_offset_width(),
+													  containing_block_context::size_mode_content), fmt_ctx);
+			content_size = min_size;
+			// Cache the result
+			el->cache_min_content_width(min_size, self_size.render_width);
+		}
 	} else
 	{
 		min_size = el->css().get_min_width().calc_percent(self_size.render_width) +
@@ -191,16 +206,42 @@ void litehtml::flex_item_row_direction::direction_specific_init(const litehtml::
 			case flex_basis_min_content:
 				if(content_size.is_default())
 				{
-					content_size = el->render(0, 0,
-											  self_size.new_width(el->content_offset_width(),
-																  containing_block_context::size_mode_content),
-											  fmt_ctx);
+					// Try cache first
+					pixel_t cached_min = el->get_cached_min_content_width(self_size.render_width);
+					if (cached_min >= 0)
+					{
+						layout_cache_stats::width_cache_hits++;
+						content_size = cached_min;
+					}
+					else
+					{
+						layout_cache_stats::width_cache_misses++;
+						content_size = el->render(0, 0,
+												  self_size.new_width(el->content_offset_width(),
+																	  containing_block_context::size_mode_content),
+												  fmt_ctx);
+						el->cache_min_content_width(content_size, self_size.render_width);
+					}
 				}
 				base_size = content_size;
 				break;
 			case flex_basis_max_content:
-				el->render(0, 0, self_size, fmt_ctx);
-				base_size = el->width();
+				{
+					// Try cache first
+					pixel_t cached_max = el->get_cached_max_content_width(self_size.render_width);
+					if (cached_max >= 0)
+					{
+						layout_cache_stats::width_cache_hits++;
+						base_size = cached_max;
+					}
+					else
+					{
+						layout_cache_stats::width_cache_misses++;
+						el->render(0, 0, self_size, fmt_ctx);
+						base_size = el->width();
+						el->cache_max_content_width(base_size, self_size.render_width);
+					}
+				}
 				break;
 			default:
 				base_size = 0;

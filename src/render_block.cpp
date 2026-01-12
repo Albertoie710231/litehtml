@@ -187,6 +187,23 @@ std::shared_ptr<litehtml::render_item> litehtml::render_item_block::init()
 
 litehtml::pixel_t litehtml::render_item_block::_render(pixel_t x, pixel_t y, const containing_block_context &containing_block_size, formatting_context* fmt_ctx, bool second_pass)
 {
+	// Check if we have a cached layout result for these constraints
+	// Only use cache on non-second-pass and when not in content-size mode
+	if (!second_pass &&
+	    !(containing_block_size.size_mode & containing_block_context::size_mode_content) &&
+	    has_cached_layout(containing_block_size.width, containing_block_size.height, containing_block_size.size_mode))
+	{
+		layout_cache_stats::layout_cache_hits++;
+		const auto& cache = get_layout_cache();
+		m_pos.width = cache.output_width;
+		m_pos.height = cache.output_height;
+		m_pos.move_to(x, y);
+		m_pos.x += content_offset_left();
+		m_pos.y += content_offset_top();
+		return cache.output_min_width;
+	}
+	layout_cache_stats::layout_cache_misses++;
+
 	containing_block_context self_size = calculate_containing_block_context(containing_block_size);
 
     //*****************************************
@@ -339,5 +356,15 @@ litehtml::pixel_t litehtml::render_item_block::_render(pixel_t x, pixel_t y, con
         }
     }
 
-    return ret_width + content_offset_width();
+	pixel_t final_ret_width = ret_width + content_offset_width();
+
+	// Cache the layout result for future use (only for non-second-pass)
+	if (!second_pass && !(containing_block_size.size_mode & containing_block_context::size_mode_content))
+	{
+		cache_layout_result(containing_block_size.width, containing_block_size.height,
+		                    containing_block_size.size_mode,
+		                    m_pos.width, m_pos.height, final_ret_width);
+	}
+
+    return final_ret_width;
 }

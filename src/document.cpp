@@ -2,6 +2,7 @@
 #include "document.h"
 #include "stylesheet.h"
 #include "layout_profiler.h"
+#include "layout_cache.h"
 #include "html_tag.h"
 #include "el_text.h"
 #include "el_para.h"
@@ -572,6 +573,9 @@ pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_la
 	pixel_t ret = 0;
 	if(m_root && m_root_render)
 	{
+		// Increment layout generation for cache invalidation
+		layout_generation::increment();
+
 		position viewport;
 		m_container->get_viewport(viewport);
 		containing_block_context cb_context;
@@ -616,6 +620,11 @@ pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_la
 	}
 
 	PROFILE_PRINT();
+
+	// Print layout cache statistics
+	layout_cache_stats::print_stats();
+	layout_cache_stats::reset();
+
 	return ret;
 }
 
