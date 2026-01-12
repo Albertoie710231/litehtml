@@ -345,7 +345,7 @@ void render_item_grid::parse_track_template(const string& template_str, std::vec
 	parse_track_list(template_str, tracks, dummy);
 }
 
-void render_item_grid::size_tracks(std::vector<grid_track>& tracks, pixel_t available_space, bool is_column)
+void render_item_grid::size_tracks(std::vector<grid_track>& tracks, pixel_t available_space, bool /*is_column*/)
 {
 	if (tracks.empty())
 	{
@@ -543,7 +543,7 @@ void render_item_grid::place_items()
 	}
 }
 
-void render_item_grid::auto_place_item(grid_item& item)
+void render_item_grid::auto_place_item(grid_item& /*item*/)
 {
 	// Simple auto-placement: find first empty cell
 	// More sophisticated algorithms would handle spanning items
@@ -657,7 +657,6 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 	}
 
 	// Size rows - for now, just use content sizes
-	pixel_t total_row_gap = m_rows.size() > 1 ? (m_rows.size() - 1) * m_row_gap : 0;
 	for (auto& row : m_rows)
 	{
 		if (row.type == grid_track::sizing_auto ||
