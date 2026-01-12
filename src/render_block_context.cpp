@@ -55,29 +55,56 @@ litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /
 
                 el->calc_outlines(self_size.width);
 
-                // Collapse top margin
+                // Collapse top margin (CSS 2.1 Section 8.3.1)
+                // Collapsed margin = max(positives) + min(negatives)
+                pixel_t el_margin_top = el->get_margins().top;
+
                 if(is_first && collapse_top_margin())
                 {
-					if(el->get_margins().top > 0)
-					{
-						child_top -= el->get_margins().top;
-						if (el->get_margins().top > get_margins().top)
-						{
-							m_margins.top = el->get_margins().top;
-						}
-					}
-                } else
+                    // Collapse with parent's top margin
+                    child_top -= el_margin_top;
+
+                    // Calculate collapsed margin per CSS spec
+                    pixel_t parent_margin = get_margins().top;
+                    pixel_t collapsed;
+                    if(el_margin_top >= 0 && parent_margin >= 0)
+                    {
+                        // Both positive: use larger
+                        collapsed = std::max(el_margin_top, parent_margin);
+                    }
+                    else if(el_margin_top < 0 && parent_margin < 0)
+                    {
+                        // Both negative: use more negative
+                        collapsed = std::min(el_margin_top, parent_margin);
+                    }
+                    else
+                    {
+                        // Mixed: sum them
+                        collapsed = el_margin_top + parent_margin;
+                    }
+                    m_margins.top = collapsed;
+                }
+                else
                 {
-					if(el->get_margins().top > 0)
-					{
-						if (last_margin > el->get_margins().top)
-						{
-							child_top -= el->get_margins().top;
-						} else
-						{
-							child_top -= last_margin;
-						}
-					}
+                    // Collapse with previous sibling's margin
+                    pixel_t collapsed;
+                    if(last_margin >= 0 && el_margin_top >= 0)
+                    {
+                        // Both positive: use larger
+                        collapsed = std::max(last_margin, el_margin_top);
+                    }
+                    else if(last_margin < 0 && el_margin_top < 0)
+                    {
+                        // Both negative: use more negative
+                        collapsed = std::min(last_margin, el_margin_top);
+                    }
+                    else
+                    {
+                        // Mixed: sum them
+                        collapsed = last_margin + el_margin_top;
+                    }
+                    // Adjust position: remove last_margin (already applied), apply collapsed
+                    child_top = child_top - last_margin + collapsed;
                 }
 
                 if(el->src_el()->is_replaced() || el->src_el()->is_block_formatting_context() || el->src_el()->css().get_display() == display_table)

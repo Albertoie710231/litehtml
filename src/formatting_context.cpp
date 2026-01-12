@@ -25,7 +25,10 @@ void litehtml::formatting_context::add_float(const std::shared_ptr<render_item> 
 			bool inserted = false;
 			for(auto i = m_floats_left.begin(); i != m_floats_left.end(); i++)
 			{
-				if(fb.pos.right() > i->pos.right())
+				// Sort by Y first (ascending), then by right edge (descending for left floats)
+				// This ensures floats are ordered by their vertical position
+				if(fb.pos.y < i->pos.y ||
+				   (fb.pos.y == i->pos.y && fb.pos.right() > i->pos.right()))
 				{
 					m_floats_left.insert(i, std::move(fb));
 					inserted = true;
@@ -48,7 +51,10 @@ void litehtml::formatting_context::add_float(const std::shared_ptr<render_item> 
 			bool inserted = false;
 			for(auto i = m_floats_right.begin(); i != m_floats_right.end(); i++)
 			{
-				if(fb.pos.left() < i->pos.left())
+				// Sort by Y first (ascending), then by left edge (ascending for right floats)
+				// This ensures floats are ordered by their vertical position
+				if(fb.pos.y < i->pos.y ||
+				   (fb.pos.y == i->pos.y && fb.pos.left() < i->pos.left()))
 				{
 					m_floats_right.insert(i, std::move(fb));
 					inserted = true;

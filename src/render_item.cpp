@@ -678,7 +678,26 @@ void litehtml::render_item::render_positioned(render_type rt)
 
 void litehtml::render_item::add_positioned(const std::shared_ptr<litehtml::render_item> &el)
 {
-    if (src_el()->css().get_position() != element_position_static || is_root())
+    // Check if this element creates a stacking context
+    // Stacking contexts are created by:
+    // 1. Positioned elements (position != static)
+    // 2. Elements with opacity < 1
+    // 3. Flex/grid containers (isolate their positioned descendants)
+    // 4. Root element
+
+    bool creates_stacking_context = is_root() ||
+        src_el()->css().get_position() != element_position_static ||
+        src_el()->css().get_opacity() < 1.0f;
+
+    // Flex/grid containers also create stacking contexts for their contents
+    style_display disp = src_el()->css().get_display();
+    if(disp == display_flex || disp == display_inline_flex ||
+       disp == display_grid || disp == display_inline_grid)
+    {
+        creates_stacking_context = true;
+    }
+
+    if (creates_stacking_context)
     {
         m_positioned.push_back(el);
     } else
@@ -705,14 +724,36 @@ void litehtml::render_item::get_redraw_box(litehtml::position& pos, pixel_t x /*
         pos.width	= p_right - p_left;
         pos.height	= p_bottom - p_top;
 
-        if(src_el()->css().get_overflow() == overflow_visible)
+        overflow ovf = src_el()->css().get_overflow();
+        bool we_are_positioned = src_el()->is_positioned();
+
+        for(auto& el : m_children)
         {
-            for(auto& el : m_children)
+            element_position child_pos = el->src_el()->css().get_position();
+
+            // Fixed elements are never included (relative to viewport)
+            if(child_pos == element_position_fixed)
+                continue;
+
+            if(ovf == overflow_visible)
             {
-                if(el->src_el()->css().get_position() != element_position_fixed)
+                // overflow:visible - include all non-fixed children
+                el->get_redraw_box(pos, x + m_pos.x, y + m_pos.y);
+            }
+            else
+            {
+                // overflow:hidden/scroll/auto
+                if(child_pos == element_position_absolute)
                 {
-                    el->get_redraw_box(pos, x + m_pos.x, y + m_pos.y);
+                    // Absolute children are clipped only if we are their containing block
+                    // (i.e., we are positioned). If we're not positioned, they escape.
+                    if(!we_are_positioned)
+                    {
+                        el->get_redraw_box(pos, x + m_pos.x, y + m_pos.y);
+                    }
+                    // else: we ARE the containing block, so child is clipped - don't include
                 }
+                // Static and relative children ARE clipped - don't include them
             }
         }
     }
