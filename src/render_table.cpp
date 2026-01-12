@@ -214,17 +214,21 @@ litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, con
                 }
                 pixel_t cell_width = m_grid->column(span_col).right - m_grid->column(col).left;
 
-                //if (cell->el->pos().width != cell_width - cell->el->content_offset_left() -
-				//									 cell->el->content_offset_right())
+                // OPTIMIZATION: Skip re-render if cell content width matches computed column width
+                pixel_t expected_content_width = cell_width - cell->el->content_offset_left() -
+                                                  cell->el->content_offset_right();
+
+                if (cell->el->pos().width != expected_content_width)
                 {
+                    // Width changed - need to re-render with new width
                     cell->el->render(m_grid->column(col).left, 0, self_size.new_width(cell_width), fmt_ctx, true);
-                    cell->el->pos().width = cell_width - cell->el->content_offset_left() -
-							cell->el->content_offset_right();
+                    cell->el->pos().width = expected_content_width;
                 }
-                /*else
+                else
                 {
+                    // Width unchanged - just update X position, skip expensive re-render
                     cell->el->pos().x = m_grid->column(col).left + cell->el->content_offset_left();
-                }*/
+                }
 
                 if (cell->rowspan <= 1)
                 {
