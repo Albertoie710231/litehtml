@@ -1,6 +1,7 @@
 #include "html.h"
 #include "document.h"
 #include "stylesheet.h"
+#include "layout_profiler.h"
 #include "html_tag.h"
 #include "el_text.h"
 #include "el_para.h"
@@ -565,6 +566,9 @@ pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_la
 
 pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_layout, pixel_t layout_threshold )
 {
+	PROFILE_RESET();
+	PROFILE_SCOPE("document::render (total)");
+
 	pixel_t ret = 0;
 	if(m_root && m_root_render)
 	{
@@ -590,19 +594,28 @@ pixel_t document::render( pixel_t max_width, render_type rt, bool incremental_la
 			m_root_render->render_positioned(rt);
 		} else
 		{
-			ret = m_root_render->render(0, 0, cb_context, nullptr);
+			{
+				PROFILE_SCOPE("root_render->render");
+				ret = m_root_render->render(0, 0, cb_context, nullptr);
+			}
 			if(m_root_render->fetch_positioned())
 			{
+				PROFILE_SCOPE("render_positioned");
 				m_fixed_boxes.clear();
 				m_root_render->render_positioned(rt);
 			}
-			m_size.width	= 0;
-			m_size.height	= 0;
-			m_content_size.width = 0;
-			m_content_size.height = 0;
-			m_root_render->calc_document_size(m_size, m_content_size);
+			{
+				PROFILE_SCOPE("calc_document_size");
+				m_size.width	= 0;
+				m_size.height	= 0;
+				m_content_size.width = 0;
+				m_content_size.height = 0;
+				m_root_render->calc_document_size(m_size, m_content_size);
+			}
 		}
 	}
+
+	PROFILE_PRINT();
 	return ret;
 }
 

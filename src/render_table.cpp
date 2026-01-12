@@ -2,6 +2,7 @@
 #include "document.h"
 #include "document_container.h"
 #include "iterators.h"
+#include "layout_profiler.h"
 
 
 litehtml::render_item_table::render_item_table(std::shared_ptr<element> _src_el) :
@@ -13,6 +14,7 @@ litehtml::render_item_table::render_item_table(std::shared_ptr<element> _src_el)
 
 litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, const containing_block_context &containing_block_size, formatting_context* fmt_ctx, bool /*second_pass*/)
 {
+    PROFILE_SCOPE("table::_render");
     if (!m_grid) return 0;
 
 	containing_block_context self_size = calculate_containing_block_context(containing_block_size);
@@ -61,6 +63,7 @@ litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, con
     }
     else
     {
+        PROFILE_SCOPE("table::cell_minmax_width");
         for (int row = 0; row < m_grid->rows_count(); row++)
         {
             for (int col = 0; col < m_grid->cols_count(); col++)
@@ -78,10 +81,27 @@ litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, con
                     }
                     else
                     {
-                        // calculate minimum content width
-                        cell->min_width = cell->el->render(0, 0, self_size.new_width(cell->el->content_offset_width()), fmt_ctx);
-                        // calculate maximum content width
-                        cell->max_width = cell->el->render(0, 0, self_size.new_width(self_size.render_width - table_width_spacing), fmt_ctx);
+                        // OPTIMIZATION: Single render instead of two
+                        // Render with maximum available width - the return value is the
+                        // minimum width required by the content (for proper wrapping).
+                        // The actual rendered width gives us the maximum content width.
+                        pixel_t available_width = self_size.render_width - table_width_spacing;
+                        pixel_t min_required = cell->el->render(0, 0, self_size.new_width(available_width), fmt_ctx);
+
+                        // min_width: what render() returns (minimum needed to fit content)
+                        cell->min_width = min_required;
+
+                        // max_width: the actual width the content used (or available width if it filled it)
+                        pixel_t content_width = cell->el->pos().width +
+                                               cell->el->content_offset_left() +
+                                               cell->el->content_offset_right();
+                        cell->max_width = std::min(content_width, available_width);
+
+                        // Ensure max >= min (sanity check)
+                        if (cell->max_width < cell->min_width)
+                        {
+                            cell->max_width = cell->min_width;
+                        }
                     }
                 }
             }

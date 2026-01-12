@@ -2,9 +2,11 @@
 #include "document.h"
 #include "document_container.h"
 #include "types.h"
+#include "layout_profiler.h"
 
 litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /*x*/, pixel_t /*y*/, bool second_pass, const containing_block_context &self_size, formatting_context* fmt_ctx)
 {
+    PROFILE_SCOPE("block::_render_content");
     element_position el_position;
 
 	pixel_t ret_width = 0;
