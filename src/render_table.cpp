@@ -64,6 +64,8 @@ litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, con
     else
     {
         PROFILE_SCOPE("table::cell_minmax_width");
+        pixel_t available_width = self_size.render_width - table_width_spacing;
+
         for (int row = 0; row < m_grid->rows_count(); row++)
         {
             for (int col = 0; col < m_grid->cols_count(); col++)
@@ -78,14 +80,19 @@ litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, con
                         cell->min_width = cell->max_width = std::max(css_w, el_w);
                         cell->el->pos().width = cell->min_width - cell->el->content_offset_left() -
 								cell->el->content_offset_right();
+                        // Invalidate cache for fixed-width columns
+                        cell->minmax_cached = false;
                     }
                     else
                     {
-                        // OPTIMIZATION: Single render instead of two
-                        // Render with maximum available width - the return value is the
-                        // minimum width required by the content (for proper wrapping).
-                        // The actual rendered width gives us the maximum content width.
-                        pixel_t available_width = self_size.render_width - table_width_spacing;
+                        // OPTIMIZATION: Use cached min/max if available width unchanged
+                        if (cell->minmax_cached && cell->cached_available_width == available_width)
+                        {
+                            // Cache hit - skip expensive render, use cached values
+                            continue;
+                        }
+
+                        // Cache miss - render to calculate min/max widths
                         pixel_t min_required = cell->el->render(0, 0, self_size.new_width(available_width), fmt_ctx);
 
                         // min_width: what render() returns (minimum needed to fit content)
@@ -102,6 +109,10 @@ litehtml::pixel_t litehtml::render_item_table::_render(pixel_t x, pixel_t y, con
                         {
                             cell->max_width = cell->min_width;
                         }
+
+                        // Update cache
+                        cell->cached_available_width = available_width;
+                        cell->minmax_cached = true;
                     }
                 }
             }

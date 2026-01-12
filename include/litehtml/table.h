@@ -152,6 +152,10 @@ namespace litehtml
 		pixel_t			height;
 		margins			borders;
 
+		// Caching fields for performance optimization
+		pixel_t			cached_available_width;  // Available width used for last min/max calc
+		bool			minmax_cached;           // True if cached min/max values are valid
+
 		table_cell()
 		{
 			min_width		= 0;
@@ -163,6 +167,8 @@ namespace litehtml
 			colspan			= 1;
 			rowspan			= 1;
 			el				= nullptr;
+			cached_available_width = -1;  // Invalid cache marker
+			minmax_cached	= false;
 		}
 
 		table_cell(const table_cell& val)
@@ -177,6 +183,8 @@ namespace litehtml
 			max_width		= val.max_width;
 			max_height		= val.max_height;
 			borders			= val.borders;
+			cached_available_width = val.cached_available_width;
+			minmax_cached	= val.minmax_cached;
 		}
 
 		table_cell(table_cell&& val) noexcept
@@ -191,6 +199,8 @@ namespace litehtml
 			max_width = val.max_width;
 			max_height = val.max_height;
 			borders = val.borders;
+			cached_available_width = val.cached_available_width;
+			minmax_cached = val.minmax_cached;
 		}
 	};
 
