@@ -118,7 +118,8 @@ litehtml::pixel_t litehtml::render_item::calc_auto_margins(pixel_t parent_width)
 
 void litehtml::render_item::apply_relative_shift(const containing_block_context &containing_block_size)
 {
-    if (src_el()->css().get_position() == element_position_relative)
+    if (src_el()->css().get_position() == element_position_relative ||
+        src_el()->css().get_position() == element_position_sticky)
     {
         css_offsets offsets = src_el()->css().get_offsets();
         if (!offsets.left.is_predefined())
@@ -305,7 +306,7 @@ void litehtml::render_item::render_positioned(render_type rt)
 			auto fix_height_min_max = [&] (pixel_t height)
 			{
 				auto max_height = el->css().get_max_height();
-				auto min_height = el->css().get_max_height();
+				auto min_height = el->css().get_min_height();
 				if(!max_height.is_predefined())
 				{
 					pixel_t max_height_value = max_height.calc_percent(containing_block_size.height);

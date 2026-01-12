@@ -28,6 +28,15 @@ namespace litehtml
 		pixel_t max_size = 0;   // Maximum size from content
 	};
 
+	// Auto-repeat information for auto-fill/auto-fit
+	struct auto_repeat_info
+	{
+		bool is_auto_repeat = false;
+		bool is_auto_fit = false;  // true = auto-fit, false = auto-fill
+		std::vector<grid_track> repeat_tracks;  // The track(s) to repeat
+		pixel_t min_track_size = 0;  // Minimum size of the repeated track (for calculating count)
+	};
+
 	class render_item_grid : public render_item_block
 	{
 		std::vector<grid_track> m_columns;
@@ -35,6 +44,10 @@ namespace litehtml
 		std::vector<std::shared_ptr<grid_item>> m_items;
 		pixel_t m_column_gap = 0;
 		pixel_t m_row_gap = 0;
+
+		// Auto-repeat storage
+		auto_repeat_info m_col_auto_repeat;
+		auto_repeat_info m_row_auto_repeat;
 
 		// Parse track template string (e.g., "100px 1fr 2fr auto")
 		void parse_track_template(const string& template_str, std::vector<grid_track>& tracks);
@@ -46,10 +59,13 @@ namespace litehtml
 		grid_track parse_minmax(const string& content);
 
 		// Expand repeat(count, tracks) into individual tracks
-		void expand_repeat(const string& content, std::vector<grid_track>& tracks);
+		void expand_repeat(const string& content, std::vector<grid_track>& tracks, auto_repeat_info& auto_info);
 
 		// Parse a track list (handles nested functions like repeat, minmax)
-		void parse_track_list(const string& template_str, std::vector<grid_track>& tracks);
+		void parse_track_list(const string& template_str, std::vector<grid_track>& tracks, auto_repeat_info& auto_info);
+
+		// Resolve auto-fill/auto-fit count based on available space
+		void resolve_auto_repeat(std::vector<grid_track>& tracks, auto_repeat_info& auto_info, pixel_t available_space, pixel_t gap);
 
 		// Size tracks based on content and available space
 		void size_tracks(std::vector<grid_track>& tracks, pixel_t available_space, bool is_column);

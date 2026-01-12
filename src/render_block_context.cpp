@@ -161,7 +161,8 @@ litehtml::pixel_t litehtml::render_item_block_context::_render_content(pixel_t /
 				last_margin_el = el;
                 is_first = false;
 
-                if (el->src_el()->css().get_position() == element_position_relative)
+                if (el->src_el()->css().get_position() == element_position_relative ||
+                    el->src_el()->css().get_position() == element_position_sticky)
                 {
                     el->apply_relative_shift(self_size);
                 }

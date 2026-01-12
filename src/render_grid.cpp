@@ -133,7 +133,7 @@ grid_track render_item_grid::parse_minmax(const string& content)
 }
 
 // Expand repeat(count, tracks) into individual tracks
-void render_item_grid::expand_repeat(const string& content, std::vector<grid_track>& tracks)
+void render_item_grid::expand_repeat(const string& content, std::vector<grid_track>& tracks, auto_repeat_info& auto_info)
 {
 	// Find the comma separating count and track list
 	size_t comma_pos = content.find(',');
@@ -151,26 +151,62 @@ void render_item_grid::expand_repeat(const string& content, std::vector<grid_tra
 	while (!track_list.empty() && (track_list.front() == ' ' || track_list.front() == '\t')) track_list.erase(0, 1);
 	while (!track_list.empty() && (track_list.back() == ' ' || track_list.back() == '\t')) track_list.pop_back();
 
-	// Handle auto-fill and auto-fit (treat as 1 for now, will be resolved during sizing)
-	int repeat_count = 1;
+	// Parse the track list inside repeat() first
+	std::vector<grid_track> repeated_tracks;
+	auto_repeat_info dummy_info;  // Nested repeats shouldn't have auto-fill/auto-fit
+	parse_track_list(track_list, repeated_tracks, dummy_info);
+
+	// Handle auto-fill and auto-fit
 	if (count_str == "auto-fill" || count_str == "auto-fit")
 	{
-		// These need container width to resolve - for now use a reasonable default
-		repeat_count = 12; // Common grid system count
+		// Store auto-repeat info for later resolution during layout
+		auto_info.is_auto_repeat = true;
+		auto_info.is_auto_fit = (count_str == "auto-fit");
+		auto_info.repeat_tracks = repeated_tracks;
+
+		// Calculate minimum track size for auto-repeat calculation
+		pixel_t min_size = 0;
+		for (const auto& t : repeated_tracks)
+		{
+			if (t.type == grid_track::sizing_fixed)
+			{
+				min_size += (pixel_t)t.value;
+			}
+			else if (t.min_size > 0)
+			{
+				min_size += t.min_size;
+			}
+			else
+			{
+				// For auto/fr tracks, use a reasonable minimum
+				min_size += 100;  // Default minimum for flexible tracks
+			}
+		}
+		auto_info.min_track_size = min_size > 0 ? min_size : 100;
+
+		// Add one placeholder track - will be replaced during resolve_auto_repeat
+		for (const auto& t : repeated_tracks)
+		{
+			tracks.push_back(t);
+		}
+		return;
 	}
-	else
+
+	// Fixed repeat count
+	int repeat_count = 1;
+	try
 	{
 		repeat_count = std::stoi(count_str);
+	}
+	catch (...)
+	{
+		repeat_count = 1;
 	}
 
 	if (repeat_count <= 0 || repeat_count > 100)
 	{
 		repeat_count = 1; // Sanity check
 	}
-
-	// Parse the track list inside repeat()
-	std::vector<grid_track> repeated_tracks;
-	parse_track_list(track_list, repeated_tracks);
 
 	// Add repeated tracks
 	for (int i = 0; i < repeat_count; i++)
@@ -182,8 +218,46 @@ void render_item_grid::expand_repeat(const string& content, std::vector<grid_tra
 	}
 }
 
+// Resolve auto-fill/auto-fit count based on available space
+void render_item_grid::resolve_auto_repeat(std::vector<grid_track>& tracks, auto_repeat_info& auto_info, pixel_t available_space, pixel_t gap)
+{
+	if (!auto_info.is_auto_repeat || auto_info.repeat_tracks.empty())
+	{
+		return;
+	}
+
+	// Calculate how many repetitions fit
+	// Formula: count = floor((available_space + gap) / (track_size + gap))
+	pixel_t track_size = auto_info.min_track_size;
+	pixel_t space_per_track = track_size + gap;
+
+	int count = 1;
+	if (space_per_track > 0)
+	{
+		count = (int)((available_space + gap) / space_per_track);
+	}
+
+	// Ensure at least 1 track
+	if (count < 1) count = 1;
+	// Reasonable upper limit
+	if (count > 100) count = 100;
+
+	// Clear existing tracks and add the resolved number
+	tracks.clear();
+	for (int i = 0; i < count; i++)
+	{
+		for (const auto& t : auto_info.repeat_tracks)
+		{
+			tracks.push_back(t);
+		}
+	}
+
+	// For auto-fit, empty tracks will be collapsed during sizing
+	// (This is handled by checking if any items span a track)
+}
+
 // Parse a track list (handles nested functions)
-void render_item_grid::parse_track_list(const string& template_str, std::vector<grid_track>& tracks)
+void render_item_grid::parse_track_list(const string& template_str, std::vector<grid_track>& tracks, auto_repeat_info& auto_info)
 {
 	if (template_str.empty() || template_str == "none")
 	{
@@ -230,7 +304,7 @@ void render_item_grid::parse_track_list(const string& template_str, std::vector<
 
 			if (token == "repeat")
 			{
-				expand_repeat(content, tracks);
+				expand_repeat(content, tracks, auto_info);
 			}
 			else if (token == "minmax")
 			{
@@ -267,7 +341,8 @@ void render_item_grid::parse_track_list(const string& template_str, std::vector<
 void render_item_grid::parse_track_template(const string& template_str, std::vector<grid_track>& tracks)
 {
 	tracks.clear();
-	parse_track_list(template_str, tracks);
+	auto_repeat_info dummy;
+	parse_track_list(template_str, tracks, dummy);
 }
 
 void render_item_grid::size_tracks(std::vector<grid_track>& tracks, pixel_t available_space, bool is_column)
@@ -483,9 +558,20 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 	m_column_gap = (pixel_t)css().get_column_gap().val();
 	m_row_gap = (pixel_t)css().get_row_gap().val();
 
-	// Parse track templates
-	parse_track_template(css().get_grid_template_columns(), m_columns);
-	parse_track_template(css().get_grid_template_rows(), m_rows);
+	// Reset auto-repeat info
+	m_col_auto_repeat = auto_repeat_info();
+	m_row_auto_repeat = auto_repeat_info();
+
+	// Parse track templates with auto-repeat info collection
+	m_columns.clear();
+	parse_track_list(css().get_grid_template_columns(), m_columns, m_col_auto_repeat);
+
+	m_rows.clear();
+	parse_track_list(css().get_grid_template_rows(), m_rows, m_row_auto_repeat);
+
+	// Resolve auto-fill/auto-fit for columns based on available width
+	pixel_t available_width = self_size.render_width;
+	resolve_auto_repeat(m_columns, m_col_auto_repeat, available_width, m_column_gap);
 
 	// If no columns defined, create one auto column
 	if (m_columns.empty())
@@ -530,8 +616,7 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 	// Place items (resolve auto-placement)
 	place_items();
 
-	// Size tracks
-	pixel_t available_width = self_size.render_width;
+	// Size tracks (available_width already calculated above)
 	pixel_t total_col_gap = m_columns.size() > 1 ? (m_columns.size() - 1) * m_column_gap : 0;
 	size_tracks(m_columns, available_width - total_col_gap, true);
 

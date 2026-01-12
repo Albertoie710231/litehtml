@@ -51,10 +51,11 @@ void litehtml::el_text::compute_styles(bool /*recursive*/)
 	element::ptr p = parent();
 	while(p && p->css().get_display() == display_inline)
 	{
-		if(p->css().get_position() == element_position_relative)
+		if(p->css().get_position() == element_position_relative ||
+		   p->css().get_position() == element_position_sticky)
 		{
 			css_w().set_offsets(p->css().get_offsets());
-			css_w().set_position(element_position_relative);
+			css_w().set_position(p->css().get_position());
 			break;
 		}
 		p = p->parent();

@@ -626,7 +626,7 @@ namespace litehtml
 		background_position_center,
 	};
 
-#define element_position_strings	"static;relative;absolute;fixed"
+#define element_position_strings	"static;relative;absolute;fixed;sticky"
 
 	enum element_position
 	{
@@ -634,6 +634,7 @@ namespace litehtml
 		element_position_relative,
 		element_position_absolute,
 		element_position_fixed,
+		element_position_sticky,
 	};
 
 #define text_align_strings		"left;right;center;justify"
