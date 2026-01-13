@@ -350,7 +350,7 @@ bool html_tag::get_custom_property(string_id name, css_token_vector& result) con
 	return false;
 }
 
-void litehtml::html_tag::compute_styles(bool recursive)
+void litehtml::html_tag::compute_styles(bool recursive, bool use_cache)
 {
 	const char* style_attr = get_attr("style");
 	document::ptr doc = get_document();
@@ -370,24 +370,33 @@ void litehtml::html_tag::compute_styles(bool recursive)
 	// Compute style hash for cache lookup
 	size_t style_hash = m_style.hash();
 
-	const css_properties* cached = doc->get_style_cache().find(m_tag, m_classes, style_hash, parent_style_hash);
-	if (cached)
+	bool cache_hit = false;
+	if (use_cache)
 	{
-		// Found cached style - copy it instead of recomputing
-		m_css = *cached;
+		const css_properties* cached = doc->get_style_cache().find(m_tag, m_classes, style_hash, parent_style_hash);
+		if (cached)
+		{
+			// Found cached style - copy it instead of recomputing
+			m_css = *cached;
+			cache_hit = true;
+		}
 	}
-	else
+
+	if (!cache_hit)
 	{
-		// Compute style and cache it
+		// Compute style (and cache it if using cache)
 		m_css.compute(this, doc);
-		doc->get_style_cache().store(m_tag, m_classes, style_hash, parent_style_hash, m_css);
+		if (use_cache)
+		{
+			doc->get_style_cache().store(m_tag, m_classes, style_hash, parent_style_hash, m_css);
+		}
 	}
 
 	if (recursive)
 	{
 		for (const auto& el : m_children)
 		{
-			el->compute_styles();
+			el->compute_styles(true, use_cache);
 		}
 	}
 }

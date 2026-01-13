@@ -18,7 +18,7 @@ namespace litehtml
 		el_text(const char* text, const document::ptr& doc);
 
 		void				get_text(string& text) const override;
-		void				compute_styles(bool recursive) override;
+		void				compute_styles(bool recursive, bool use_cache = true) override;
 		bool				is_text() const override { return true; }
 
 		void draw(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip, const std::shared_ptr<render_item> &ri) override;

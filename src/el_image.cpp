@@ -96,9 +96,9 @@ void litehtml::el_image::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 	}
 }
 
-void litehtml::el_image::compute_styles(bool recursive)
+void litehtml::el_image::compute_styles(bool recursive, bool use_cache)
 {
-	html_tag::compute_styles(recursive);
+	html_tag::compute_styles(recursive, use_cache);
 
 	if(!m_src.empty())
 	{

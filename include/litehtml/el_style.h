@@ -13,7 +13,7 @@ namespace litehtml
 
 		void			parse_attributes() override;
 		bool			appendChild(const ptr &el) override;
-		void			compute_styles(bool recursive) override;
+		void			compute_styles(bool recursive, bool use_cache = true) override;
 		string_id		tag() const override;
 		const char*		get_tagName() const override;
 	};

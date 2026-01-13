@@ -48,6 +48,45 @@ position element::get_placement() const
 	return pos;
 }
 
+position element::get_border_box() const
+{
+	position pos;
+	bool is_first = true;
+	for(const auto& ri_el : m_renders)
+	{
+		auto ri = ri_el.lock();
+		if(ri)
+		{
+			// Get content box position
+			position ri_pos = ri->get_placement();
+			// Expand to border box (content + padding + border, no margin)
+			const margins& pad = ri->get_paddings();
+			const margins& brd = ri->get_borders();
+			ri_pos.x -= pad.left + brd.left;
+			ri_pos.y -= pad.top + brd.top;
+			ri_pos.width += pad.left + pad.right + brd.left + brd.right;
+			ri_pos.height += pad.top + pad.bottom + brd.top + brd.bottom;
+
+			if(is_first)
+			{
+				is_first = false;
+				pos = ri_pos;
+			} else
+			{
+				if(pos.x < ri_pos.x)
+				{
+					pos.x = ri_pos.x;
+				}
+				if(pos.y < ri_pos.y)
+				{
+					pos.y = ri_pos.y;
+				}
+			}
+		}
+	}
+	return pos;
+}
+
 bool element::is_inline() const
 {
 	if(	css().get_display() == display_inline ||
@@ -448,7 +487,7 @@ void element::set_attr( const char* /*name*/, const char* /*val*/ )					LITEHTML
 void element::apply_stylesheet( const litehtml::css& /*stylesheet*/ )				LITEHTML_EMPTY_FUNC
 void element::refresh_styles()														LITEHTML_EMPTY_FUNC
 void element::on_click()															LITEHTML_EMPTY_FUNC
-void element::compute_styles( bool /*recursive*/ )									LITEHTML_EMPTY_FUNC
+void element::compute_styles( bool /*recursive*/, bool /*use_cache*/ )				LITEHTML_EMPTY_FUNC
 const char* element::get_attr( const char* /*name*/, const char* def /*= 0*/ ) const LITEHTML_RETURN_FUNC(def)
 bool element::is_white_space() const												LITEHTML_RETURN_FUNC(false)
 bool element::is_space() const														LITEHTML_RETURN_FUNC(false)

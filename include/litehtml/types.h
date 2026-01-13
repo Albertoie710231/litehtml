@@ -1076,6 +1076,38 @@ namespace litehtml
 		caption_side_top,
 		caption_side_bottom
 	};
+
+	// CSS Transitions
+#define transition_timing_function_strings	"linear;ease;ease-in;ease-out;ease-in-out;step-start;step-end"
+
+	enum transition_timing_function
+	{
+		transition_timing_linear,
+		transition_timing_ease,
+		transition_timing_ease_in,
+		transition_timing_ease_out,
+		transition_timing_ease_in_out,
+		transition_timing_step_start,
+		transition_timing_step_end,
+		transition_timing_cubic_bezier,  // Custom cubic-bezier(p1, p2, p3, p4)
+		transition_timing_steps          // Custom steps(n, start/end)
+	};
+
+	// A single transition specification
+	struct transition_spec
+	{
+		string property_name = "all";     // Property to transition (or "all" or "none")
+		float duration_ms = 0.0f;         // Duration in milliseconds
+		transition_timing_function timing = transition_timing_ease;
+		float delay_ms = 0.0f;            // Delay before transition starts
+		// For cubic-bezier timing
+		float bezier_p1 = 0.0f, bezier_p2 = 0.0f, bezier_p3 = 0.0f, bezier_p4 = 0.0f;
+		// For steps timing
+		int steps_count = 1;
+		bool steps_start = false;  // true = jump-start, false = jump-end
+	};
+
+	using transition_spec_vector = std::vector<transition_spec>;
 }
 
 #endif  // LH_TYPES_H

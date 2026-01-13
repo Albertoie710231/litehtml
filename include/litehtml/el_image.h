@@ -16,7 +16,7 @@ namespace litehtml
 
 		bool	is_replaced() const override;
 		void	parse_attributes() override;
-		void	compute_styles(bool recursive = true) override;
+		void	compute_styles(bool recursive = true, bool use_cache = true) override;
 		void	draw(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip, const std::shared_ptr<render_item> &ri) override;
 		void	get_content_size(size& sz, pixel_t max_width) override;
 		string	dump_get_name() override;

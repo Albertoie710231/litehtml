@@ -342,6 +342,94 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 		}
 	}
 
+	// Parse CSS Transitions
+	// transition: <property> <duration> [<timing-function>] [<delay>]
+	// Multiple transitions separated by commas
+	string transition_str = el->get_property<string>(_transition_, false, "", offset(m_transitions));
+	m_transitions.clear();
+	if (!transition_str.empty() && transition_str != "none")
+	{
+		// Also check individual properties
+		string prop_str = el->get_property<string>(_transition_property_, false, "", 0);
+		string dur_str = el->get_property<string>(_transition_duration_, false, "", 0);
+		string timing_str = el->get_property<string>(_transition_timing_function_, false, "", 0);
+		string delay_str = el->get_property<string>(_transition_delay_, false, "", 0);
+
+		// Parse shorthand transition string
+		// Format: property duration timing-function delay, ...
+		size_t pos = 0;
+		while (pos < transition_str.size())
+		{
+			// Find next comma or end
+			size_t comma = transition_str.find(',', pos);
+			if (comma == string::npos) comma = transition_str.size();
+
+			string part = transition_str.substr(pos, comma - pos);
+
+			// Trim whitespace
+			size_t start = part.find_first_not_of(" \t");
+			size_t end = part.find_last_not_of(" \t");
+			if (start != string::npos && end != string::npos)
+			{
+				part = part.substr(start, end - start + 1);
+
+				transition_spec spec;
+
+				// Parse tokens from part
+				std::istringstream iss(part);
+				string token;
+				int token_idx = 0;
+				while (iss >> token)
+				{
+					// Check for timing functions
+					if (token == "ease") {
+						spec.timing = transition_timing_ease;
+					} else if (token == "linear") {
+						spec.timing = transition_timing_linear;
+					} else if (token == "ease-in") {
+						spec.timing = transition_timing_ease_in;
+					} else if (token == "ease-out") {
+						spec.timing = transition_timing_ease_out;
+					} else if (token == "ease-in-out") {
+						spec.timing = transition_timing_ease_in_out;
+					} else if (token == "step-start") {
+						spec.timing = transition_timing_step_start;
+					} else if (token == "step-end") {
+						spec.timing = transition_timing_step_end;
+					}
+					// Check for time values (ends in 's' or 'ms')
+					else if (token.size() > 1 && (token.back() == 's' || (token.size() > 2 && token.substr(token.size()-2) == "ms")))
+					{
+						float time_val = 0;
+						bool is_ms = token.find("ms") != string::npos;
+						char* endptr;
+						time_val = strtof(token.c_str(), &endptr);
+						if (!is_ms) time_val *= 1000.0f; // Convert seconds to ms
+
+						// First time value is duration, second is delay
+						if (spec.duration_ms == 0)
+							spec.duration_ms = time_val;
+						else
+							spec.delay_ms = time_val;
+					}
+					// Property name (first non-keyword token)
+					else if (token_idx == 0 || spec.property_name == "all")
+					{
+						spec.property_name = token;
+					}
+					token_idx++;
+				}
+
+				if (!spec.property_name.empty())
+				{
+					m_transitions.push_back(spec);
+				}
+			}
+
+			pos = comma + 1;
+		}
+	}
+
 	m_css_text_indent = el->get_property<css_length>(_text_indent_, true, 0, offset(m_css_text_indent));
 	doc->cvt_units(m_css_text_indent, m_font_metrics, 0);
 

@@ -28,7 +28,7 @@ bool litehtml::el_style::appendChild(const ptr &el)
 	return false;
 }
 
-void litehtml::el_style::compute_styles(bool /* recursive */)
+void litehtml::el_style::compute_styles(bool /* recursive */, bool /* use_cache */)
 {
 	css_w().set_display(display_none);
 }

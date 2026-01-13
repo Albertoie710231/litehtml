@@ -124,6 +124,9 @@ namespace litehtml
 		float					m_opacity = 1.0f;
 		std::vector<box_shadow>	m_box_shadows;
 
+		// CSS Transitions
+		transition_spec_vector	m_transitions;
+
 	private:
 		void compute_font(const html_tag* el, const std::shared_ptr<document>& doc);
 		void compute_background(const html_tag* el, const std::shared_ptr<document>& doc);
@@ -331,6 +334,10 @@ namespace litehtml
 
 		const std::vector<box_shadow>& get_box_shadows() const;
 		void set_box_shadows(const std::vector<box_shadow>& shadows);
+
+		// CSS Transitions
+		const transition_spec_vector& get_transitions() const;
+		void set_transitions(const transition_spec_vector& transitions);
 
 		int get_text_decoration_line() const;
 		text_decoration_style get_text_decoration_style() const;
@@ -855,6 +862,16 @@ namespace litehtml
 	inline int css_properties::get_text_emphasis_position() const
 	{
 		return m_text_emphasis_position;
+	}
+
+	inline const transition_spec_vector& css_properties::get_transitions() const
+	{
+		return m_transitions;
+	}
+
+	inline void css_properties::set_transitions(const transition_spec_vector& transitions)
+	{
+		m_transitions = transitions;
 	}
 }
 

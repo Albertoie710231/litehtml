@@ -146,7 +146,8 @@ litehtml::pixel_t litehtml::formatting_context::get_floats_height(element_float 
 
 litehtml::pixel_t litehtml::formatting_context::get_left_floats_height() const
 {
-	pixel_t h = 0;
+	// Start at m_current_top to ensure non-negative result when floats have negative margins
+	pixel_t h = m_current_top;
 	if(!m_floats_left.empty())
 	{
 		for (const auto& fb : m_floats_left)
@@ -159,7 +160,8 @@ litehtml::pixel_t litehtml::formatting_context::get_left_floats_height() const
 
 litehtml::pixel_t litehtml::formatting_context::get_right_floats_height() const
 {
-	pixel_t h = 0;
+	// Start at m_current_top to ensure non-negative result when floats have negative margins
+	pixel_t h = m_current_top;
 	if(!m_floats_right.empty())
 	{
 		for(const auto& fb : m_floats_right)

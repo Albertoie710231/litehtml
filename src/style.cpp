@@ -540,6 +540,38 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 		add_parsed_property(name, property_value(str, important));
 		break;
 
+	//  =============================  CSS TRANSITIONS  =============================
+
+	case _transition_property_:
+		// Store as raw string - list of property names separated by commas
+		// Example: "all", "none", "opacity, transform"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _transition_duration_:
+	case _transition_delay_:
+		// Store as raw string - list of time values separated by commas
+		// Example: "0s", "1s", "200ms, 500ms"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _transition_timing_function_:
+		// Store as raw string - list of timing functions
+		// Example: "ease", "linear", "cubic-bezier(0.1, 0.7, 1.0, 0.1)"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _transition_:
+		// Shorthand: transition: <property> <duration> <timing-function> <delay>
+		// Multiple transitions comma-separated
+		// Store as raw string and parse in css_properties
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
 	//  =============================  GRID  =============================
 
 	case _grid_template_columns_:

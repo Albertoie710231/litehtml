@@ -51,6 +51,7 @@ namespace litehtml
 		bool						is_inline_box()				const;	// returns true if element is inline box (inline-table, inline-box, inline-flex)
 		bool						is_block_box()				const;
 		position					get_placement()				const;
+		position					get_border_box()			const;  // Returns border box (content + padding + border)
 		bool						is_positioned()				const;
 		bool						is_float()					const;
 		bool						is_block_formatting_context() const;
@@ -99,7 +100,7 @@ namespace litehtml
 		virtual bool				set_pseudo_class(string_id cls, bool add);
 		virtual bool				set_class(const char* pclass, bool add);
 		virtual bool				is_replaced() const;
-		virtual void				compute_styles(bool recursive = true);
+		virtual void				compute_styles(bool recursive = true, bool use_cache = true);
 		virtual void				draw(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip, const std::shared_ptr<render_item>& ri);
 		virtual void				draw_background(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip, const std::shared_ptr<render_item> &ri);
 

@@ -24,7 +24,7 @@ void litehtml::el_text::get_text( string& text ) const
 	text += m_text;
 }
 
-void litehtml::el_text::compute_styles(bool /*recursive*/)
+void litehtml::el_text::compute_styles(bool /*recursive*/, bool /*use_cache*/)
 {
 	element::ptr el_parent = parent();
 	if (el_parent)
