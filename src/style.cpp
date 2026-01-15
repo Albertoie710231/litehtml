@@ -572,6 +572,66 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 		add_parsed_property(name, property_value(str, important));
 		break;
 
+	//  =============================  CSS ANIMATIONS  =============================
+
+	case _animation_name_:
+		// Store as raw string - list of @keyframes names separated by commas
+		// Example: "none", "slidein", "pulse, fadeout"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _animation_duration_:
+	case _animation_delay_:
+		// Store as raw string - list of time values separated by commas
+		// Example: "0s", "1s", "200ms, 500ms"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _animation_timing_function_:
+		// Store as raw string - list of timing functions
+		// Example: "ease", "linear", "cubic-bezier(0.1, 0.7, 1.0, 0.1)"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _animation_iteration_count_:
+		// Store as raw string - list of counts
+		// Example: "1", "infinite", "2, infinite"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _animation_direction_:
+		// Store as raw string - list of direction values
+		// Example: "normal", "reverse", "alternate", "alternate-reverse"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _animation_fill_mode_:
+		// Store as raw string - list of fill mode values
+		// Example: "none", "forwards", "backwards", "both"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _animation_play_state_:
+		// Store as raw string - list of play state values
+		// Example: "running", "paused"
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
+	case _animation_:
+		// Shorthand: animation: <name> <duration> <timing-function> <delay> <iteration-count> <direction> <fill-mode> <play-state>
+		// Multiple animations comma-separated
+		// Store as raw string and parse in css_properties
+		str = get_repr(value, 0, -1, true);
+		add_parsed_property(name, property_value(str, important));
+		break;
+
 	//  =============================  GRID  =============================
 
 	case _grid_template_columns_:

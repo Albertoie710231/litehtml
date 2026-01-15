@@ -941,6 +941,19 @@ void document::add_media_list(media_query_list_list::ptr list)
 		m_media_lists.push_back(list);
 }
 
+void document::add_keyframes(const keyframes_rule& rule)
+{
+	m_keyframes[rule.name] = rule;
+}
+
+const keyframes_rule* document::get_keyframes(const string& name) const
+{
+	auto it = m_keyframes.find(name);
+	if (it != m_keyframes.end())
+		return &it->second;
+	return nullptr;
+}
+
 void document::fix_tables_layout()
 {
 	for (const auto& el_ptr : m_tabular_elements)

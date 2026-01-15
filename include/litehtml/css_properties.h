@@ -127,6 +127,9 @@ namespace litehtml
 		// CSS Transitions
 		transition_spec_vector	m_transitions;
 
+		// CSS Animations
+		animation_spec_vector	m_animations;
+
 	private:
 		void compute_font(const html_tag* el, const std::shared_ptr<document>& doc);
 		void compute_background(const html_tag* el, const std::shared_ptr<document>& doc);
@@ -338,6 +341,10 @@ namespace litehtml
 		// CSS Transitions
 		const transition_spec_vector& get_transitions() const;
 		void set_transitions(const transition_spec_vector& transitions);
+
+		// CSS Animations
+		const animation_spec_vector& get_animations() const;
+		void set_animations(const animation_spec_vector& animations);
 
 		int get_text_decoration_line() const;
 		text_decoration_style get_text_decoration_style() const;
@@ -872,6 +879,16 @@ namespace litehtml
 	inline void css_properties::set_transitions(const transition_spec_vector& transitions)
 	{
 		m_transitions = transitions;
+	}
+
+	inline const animation_spec_vector& css_properties::get_animations() const
+	{
+		return m_animations;
+	}
+
+	inline void css_properties::set_animations(const animation_spec_vector& animations)
+	{
+		m_animations = animations;
 	}
 }
 

@@ -1108,6 +1108,64 @@ namespace litehtml
 	};
 
 	using transition_spec_vector = std::vector<transition_spec>;
+
+	// CSS Animations
+#define animation_direction_strings		"normal;reverse;alternate;alternate-reverse"
+#define animation_fill_mode_strings		"none;forwards;backwards;both"
+#define animation_play_state_strings	"running;paused"
+
+	enum animation_direction
+	{
+		animation_direction_normal,
+		animation_direction_reverse,
+		animation_direction_alternate,
+		animation_direction_alternate_reverse
+	};
+
+	enum animation_fill_mode
+	{
+		animation_fill_none,
+		animation_fill_forwards,
+		animation_fill_backwards,
+		animation_fill_both
+	};
+
+	enum animation_play_state
+	{
+		animation_play_running,
+		animation_play_paused
+	};
+
+	// Single keyframe in @keyframes rule (percentage + properties)
+	struct keyframe
+	{
+		float offset = 0.0f;  // 0.0 to 1.0 (from 0% to 100%)
+		std::map<string, string> properties;  // property name -> value string
+		transition_timing_function timing = transition_timing_ease;  // timing for this keyframe
+	};
+
+	// Named @keyframes rule
+	struct keyframes_rule
+	{
+		string name;
+		std::vector<keyframe> keyframes;  // sorted by offset
+	};
+
+	// Animation specification (per element, from animation property)
+	struct animation_spec
+	{
+		string name;                        // @keyframes name
+		float duration_ms = 0.0f;           // animation-duration
+		transition_timing_function timing = transition_timing_ease;  // animation-timing-function
+		float delay_ms = 0.0f;              // animation-delay
+		float iteration_count = 1.0f;       // animation-iteration-count (INFINITY for infinite)
+		animation_direction direction = animation_direction_normal;
+		animation_fill_mode fill_mode = animation_fill_none;
+		animation_play_state play_state = animation_play_running;
+	};
+
+	using animation_spec_vector = std::vector<animation_spec>;
+	using keyframes_map = std::map<string, keyframes_rule>;
 }
 
 #endif  // LH_TYPES_H

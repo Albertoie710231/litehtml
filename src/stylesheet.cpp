@@ -61,6 +61,16 @@ void css::parse_css_stylesheet(const Input& input, string baseurl, document::ptr
 			break;
 		}
 
+		// https://www.w3.org/TR/css-animations-1/#keyframes
+		// @keyframes <keyframes-name> { <rule-list> }
+		case _keyframes_:
+		{
+			if (rule->block.type != CURLY_BLOCK) break;
+			parse_keyframes_rule(rule, doc);
+			import_allowed = false;
+			break;
+		}
+
 		default:
 			css_parse_error("unrecognized rule @" + rule->name);
 		}
@@ -240,6 +250,214 @@ void css::get_potentially_matching_selectors(
 		[](const css_selector::ptr& a, const css_selector::ptr& b) {
 			return *a < *b;
 		});
+}
+
+// https://www.w3.org/TR/css-animations-1/#keyframes
+// Parse @keyframes <name> { <keyframe-block-list> }
+void css::parse_keyframes_rule(raw_rule::ptr rule, document::ptr doc)
+{
+	// Get keyframes name from prelude
+	auto tokens = rule->prelude;
+	int index = 0;
+	skip_whitespace(tokens, index);
+
+	if (index >= (int)tokens.size())
+	{
+		css_parse_error("@keyframes missing name");
+		return;
+	}
+
+	// Name can be an ident or string
+	string name;
+	const auto& tok = tokens[index];
+	if (tok.type == IDENT)
+	{
+		name = tok.ident();
+	}
+	else if (tok.type == STRING)
+	{
+		name = tok.str;
+	}
+	else
+	{
+		css_parse_error("@keyframes invalid name");
+		return;
+	}
+
+	if (name.empty() || name == "none")
+	{
+		css_parse_error("@keyframes name cannot be 'none'");
+		return;
+	}
+
+	keyframes_rule kf_rule;
+	kf_rule.name = name;
+
+	// Parse the block content as a list of keyframe blocks
+	// Each keyframe block is: <keyframe-selector># { <declaration-list> }
+	// <keyframe-selector> = from | to | <percentage>
+	// Keyframes blocks are not like regular CSS rules - they don't have selectors
+	// Instead we parse them as qualified rules where the prelude is the selector
+	auto block_rules = css_parser::parse_stylesheet(rule->block.value, false);
+
+	for (const auto& block : block_rules)
+	{
+		if (block->type != raw_rule::qualified) continue;
+
+		// Parse keyframe selectors (can have multiple: 0%, 50% { ... })
+		std::vector<float> offsets;
+		auto sel_tokens = block->prelude;
+		int sel_idx = 0;
+
+		while (sel_idx < (int)sel_tokens.size())
+		{
+			skip_whitespace(sel_tokens, sel_idx);
+			if (sel_idx >= (int)sel_tokens.size()) break;
+
+			const auto& sel_tok = sel_tokens[sel_idx];
+
+			if (sel_tok.type == IDENT)
+			{
+				string id = sel_tok.ident();
+				if (id == "from")
+				{
+					offsets.push_back(0.0f);
+				}
+				else if (id == "to")
+				{
+					offsets.push_back(1.0f);
+				}
+				sel_idx++;
+			}
+			else if (sel_tok.type == PERCENTAGE)
+			{
+				offsets.push_back(sel_tok.n.number / 100.0f);
+				sel_idx++;
+			}
+			else if (sel_tok.type == COMMA)
+			{
+				sel_idx++;
+			}
+			else
+			{
+				sel_idx++;  // Skip unknown tokens
+			}
+		}
+
+		if (offsets.empty()) continue;
+
+		// Parse declarations from the block
+		if (block->block.type != CURLY_BLOCK) continue;
+
+		std::map<string, string> properties;
+
+		// Parse declarations
+		auto decl_tokens = block->block.value;
+		int decl_idx = 0;
+
+		while (decl_idx < (int)decl_tokens.size())
+		{
+			skip_whitespace(decl_tokens, decl_idx);
+			if (decl_idx >= (int)decl_tokens.size()) break;
+
+			// Expect property name
+			if (decl_tokens[decl_idx].type != IDENT)
+			{
+				decl_idx++;
+				continue;
+			}
+
+			string prop_name = decl_tokens[decl_idx].ident();
+			decl_idx++;
+			skip_whitespace(decl_tokens, decl_idx);
+
+			// Expect colon
+			if (decl_idx >= (int)decl_tokens.size() || decl_tokens[decl_idx].ch != ':')
+			{
+				continue;
+			}
+			decl_idx++;
+			skip_whitespace(decl_tokens, decl_idx);
+
+			// Collect value until semicolon or end
+			string value;
+			while (decl_idx < (int)decl_tokens.size() && decl_tokens[decl_idx].ch != ';')
+			{
+				const auto& val_tok = decl_tokens[decl_idx];
+				if (!value.empty() && val_tok.type != COMMA) value += " ";
+
+				if (val_tok.type == IDENT)
+				{
+					value += val_tok.ident();
+				}
+				else if (val_tok.type == STRING)
+				{
+					value += "\"" + val_tok.str + "\"";
+				}
+				else if (val_tok.type == NUMBER || val_tok.type == PERCENTAGE || val_tok.type == DIMENSION)
+				{
+					value += std::to_string(val_tok.n.number);
+					if (val_tok.type == PERCENTAGE) value += "%";
+					else if (val_tok.type == DIMENSION) value += val_tok.unit;
+				}
+				else if (val_tok.type == HASH)
+				{
+					value += "#" + val_tok.name;
+				}
+				else if (val_tok.type == COMMA)
+				{
+					value += ",";
+				}
+				else if (val_tok.type == CV_FUNCTION)
+				{
+					value += val_tok.name + "(";
+					for (size_t i = 0; i < val_tok.value.size(); i++)
+					{
+						const auto& v = val_tok.value[i];
+						if (i > 0 && v.type != COMMA) value += " ";
+						if (v.type == IDENT) value += v.ident();
+						else if (v.type == NUMBER || v.type == PERCENTAGE || v.type == DIMENSION)
+						{
+							value += std::to_string(v.n.number);
+							if (v.type == PERCENTAGE) value += "%";
+							else if (v.type == DIMENSION) value += v.unit;
+						}
+						else if (v.type == COMMA) value += ",";
+					}
+					value += ")";
+				}
+				decl_idx++;
+			}
+
+			if (decl_idx < (int)decl_tokens.size() && decl_tokens[decl_idx].ch == ';')
+			{
+				decl_idx++;
+			}
+
+			if (!prop_name.empty() && !value.empty())
+			{
+				properties[prop_name] = value;
+			}
+		}
+
+		// Create keyframe entries for each offset
+		for (float offset : offsets)
+		{
+			keyframe kf;
+			kf.offset = offset;
+			kf.properties = properties;
+			kf_rule.keyframes.push_back(kf);
+		}
+	}
+
+	// Sort keyframes by offset
+	std::sort(kf_rule.keyframes.begin(), kf_rule.keyframes.end(),
+		[](const keyframe& a, const keyframe& b) {
+			return a.offset < b.offset;
+		});
+
+	// Add to document
+	doc->add_keyframes(kf_rule);
 }
 
 } // namespace litehtml

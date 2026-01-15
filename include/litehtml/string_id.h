@@ -336,6 +336,17 @@ STRING_ID(
 	_transition_timing_function_,
 	_transition_delay_,
 
+	// CSS Animations
+	_animation_,
+	_animation_name_,
+	_animation_duration_,
+	_animation_timing_function_,
+	_animation_delay_,
+	_animation_iteration_count_,
+	_animation_direction_,
+	_animation_fill_mode_,
+	_animation_play_state_,
+
 	_counter_reset_,
 	_counter_increment_,
 
@@ -361,6 +372,9 @@ STRING_ID(
 	_layer_,
 	_import_,
 	_media_,
+	_keyframes_,
+	_from_,
+	_to_,
 	_and_,
 	_or_,
 	_boolean_,

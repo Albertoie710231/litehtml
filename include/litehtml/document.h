@@ -74,6 +74,9 @@ namespace litehtml
 		document_mode						m_mode = no_quirks_mode;
 		selector_filter						m_selector_filter;  // Bloom filter for fast ancestor matching
 		style_cache							m_style_cache;      // Style sharing cache for similar elements
+		pixel_t								m_scroll_x = 0;     // Scroll position for sticky elements
+		pixel_t								m_scroll_y = 0;
+		keyframes_map						m_keyframes;        // CSS @keyframes rules
 	public:
 		document(document_container* objContainer);
 		virtual ~document();
@@ -111,6 +114,15 @@ namespace litehtml
 		bool							match_lang(const string& lang);
 		void							add_tabular(const std::shared_ptr<render_item>& el);
 		std::shared_ptr<const element>	get_over_element() const { return m_over_element; }
+
+		// Scroll position for sticky element positioning
+		void							set_scroll_position(pixel_t x, pixel_t y) { m_scroll_x = x; m_scroll_y = y; }
+		pixel_t							scroll_x() const { return m_scroll_x; }
+		pixel_t							scroll_y() const { return m_scroll_y; }
+
+		// CSS @keyframes rules
+		void							add_keyframes(const keyframes_rule& rule);
+		const keyframes_rule*			get_keyframes(const string& name) const;
 
 		void							append_children_from_string(element& parent, const char* str);
 		void							dump(dumper& cout);

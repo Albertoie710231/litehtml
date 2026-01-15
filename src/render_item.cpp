@@ -863,8 +863,10 @@ void litehtml::render_item::draw_children(uint_ptr hdc, pixel_t x, pixel_t y, co
 
     if (src_el()->css().get_overflow() > overflow_visible)
     {
-        // TODO: Process overflow for inline elements
-        if(src_el()->css().get_display() != display_inline)
+        // CSS 2.1 Section 11.1.1: overflow applies to block containers, not pure inline elements.
+        // inline-block, inline-flex, inline-grid ARE block containers and should clip.
+        if(src_el()->css().get_display() != display_inline &&
+           src_el()->css().get_display() != display_inline_text)
         {
             position border_box = pos;
             border_box += m_padding;
@@ -895,6 +897,34 @@ void litehtml::render_item::draw_children(uint_ptr hdc, pixel_t x, pixel_t y, co
 							// Fixed elements position is always relative to the (0,0)
                             el->src_el()->draw(hdc, 0, 0, clip, el);
                             el->draw_stacking_context(hdc, 0, 0, clip, true, depth + 1);
+                        }
+                        else if (el->src_el()->css().get_position() == element_position_sticky)
+                        {
+                            // Sticky elements: adjust position based on scroll
+                            pixel_t draw_x = pos.x;
+                            pixel_t draw_y = pos.y;
+                            pixel_t scroll_y = doc->scroll_y();
+                            css_offsets offsets = el->src_el()->css().get_offsets();
+
+                            // Handle sticky top
+                            if (!offsets.top.is_predefined())
+                            {
+                                pixel_t sticky_top = offsets.top.val();
+                                // el->pos().y is the element's position in document coordinates
+                                // When scrolled, viewport_y tells us where it appears on screen
+                                pixel_t el_doc_y = el->pos().y;
+                                pixel_t viewport_y = el_doc_y - scroll_y;
+
+                                if (viewport_y < sticky_top)
+                                {
+                                    // Element would scroll above sticky threshold - stick it
+                                    draw_y = pos.y + (scroll_y + sticky_top - el_doc_y);
+                                }
+                            }
+                            // TODO: Handle bottom, left, right sticky offsets
+
+                            el->src_el()->draw(hdc, draw_x, draw_y, clip, el);
+                            el->draw_stacking_context(hdc, draw_x, draw_y, clip, true, depth + 1);
                         }
                         else
                         {
@@ -1415,7 +1445,19 @@ litehtml::containing_block_context litehtml::render_item::calculate_containing_b
 			}
 			if(height)
 			{
-				calc_cb_length(*height, cb_context.height, ret.height);
+				// CSS 2.1 Section 10.5: If the height of the containing block is not
+				// specified explicitly (i.e., it depends on content height), and this
+				// element is not absolutely positioned, percentage heights compute to 'auto'.
+				if(height->units() == css_units_percentage &&
+				   cb_context.height.type == containing_block_context::cbc_value_type_auto)
+				{
+					// Leave ret.height as auto (default)
+					ret.height.type = containing_block_context::cbc_value_type_auto;
+				}
+				else
+				{
+					calc_cb_length(*height, cb_context.height, ret.height);
+				}
 			}
 		}
 		if (ret.width.type != containing_block_context::cbc_value_type_auto && (src_el()->css().get_display() == display_table || src_el()->is_root()))

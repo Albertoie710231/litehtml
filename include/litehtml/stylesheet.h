@@ -81,6 +81,7 @@ public:
 private:
 	bool	parse_style_rule(raw_rule::ptr rule, string baseurl, shared_ptr<document> doc, media_query_list_list::ptr media);
 	void	parse_import_rule(raw_rule::ptr rule, string baseurl, shared_ptr<document> doc, media_query_list_list::ptr media);
+	void	parse_keyframes_rule(raw_rule::ptr rule, shared_ptr<document> doc);
 	void	add_selector(const css_selector::ptr& selector);
 	void	index_selector(const css_selector::ptr& selector);
 };

@@ -430,6 +430,125 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 		}
 	}
 
+	// Parse CSS Animations
+	// animation: <name> <duration> [<timing-function>] [<delay>] [<iteration-count>] [<direction>] [<fill-mode>] [<play-state>]
+	// Multiple animations separated by commas
+	string animation_str = el->get_property<string>(_animation_, false, "", offset(m_animations));
+	m_animations.clear();
+	if (!animation_str.empty() && animation_str != "none")
+	{
+		// Parse shorthand animation string
+		size_t pos = 0;
+		while (pos < animation_str.size())
+		{
+			// Find next comma or end
+			size_t comma = animation_str.find(',', pos);
+			if (comma == string::npos) comma = animation_str.size();
+
+			string part = animation_str.substr(pos, comma - pos);
+
+			// Trim whitespace
+			size_t start = part.find_first_not_of(" \t");
+			size_t end = part.find_last_not_of(" \t");
+			if (start != string::npos && end != string::npos)
+			{
+				part = part.substr(start, end - start + 1);
+
+				animation_spec spec;
+				bool has_time = false;
+
+				// Parse tokens from part
+				std::istringstream iss(part);
+				string token;
+				while (iss >> token)
+				{
+					// Check for timing functions
+					if (token == "ease") {
+						spec.timing = transition_timing_ease;
+					} else if (token == "linear") {
+						spec.timing = transition_timing_linear;
+					} else if (token == "ease-in") {
+						spec.timing = transition_timing_ease_in;
+					} else if (token == "ease-out") {
+						spec.timing = transition_timing_ease_out;
+					} else if (token == "ease-in-out") {
+						spec.timing = transition_timing_ease_in_out;
+					} else if (token == "step-start") {
+						spec.timing = transition_timing_step_start;
+					} else if (token == "step-end") {
+						spec.timing = transition_timing_step_end;
+					}
+					// Check for time values (ends in 's' or 'ms')
+					else if (token.size() > 1 && (token.back() == 's' || (token.size() > 2 && token.substr(token.size()-2) == "ms")))
+					{
+						float time_val = 0;
+						bool is_ms = token.find("ms") != string::npos;
+						char* endptr;
+						time_val = strtof(token.c_str(), &endptr);
+						if (!is_ms) time_val *= 1000.0f; // Convert seconds to ms
+
+						// First time value is duration, second is delay
+						if (!has_time) {
+							spec.duration_ms = time_val;
+							has_time = true;
+						} else {
+							spec.delay_ms = time_val;
+						}
+					}
+					// Check for iteration count
+					else if (token == "infinite") {
+						spec.iteration_count = std::numeric_limits<float>::infinity();
+					}
+					// Check for direction
+					else if (token == "normal") {
+						spec.direction = animation_direction_normal;
+					} else if (token == "reverse") {
+						spec.direction = animation_direction_reverse;
+					} else if (token == "alternate") {
+						spec.direction = animation_direction_alternate;
+					} else if (token == "alternate-reverse") {
+						spec.direction = animation_direction_alternate_reverse;
+					}
+					// Check for fill-mode
+					else if (token == "forwards") {
+						spec.fill_mode = animation_fill_forwards;
+					} else if (token == "backwards") {
+						spec.fill_mode = animation_fill_backwards;
+					} else if (token == "both") {
+						spec.fill_mode = animation_fill_both;
+					}
+					// Check for play-state
+					else if (token == "running") {
+						spec.play_state = animation_play_running;
+					} else if (token == "paused") {
+						spec.play_state = animation_play_paused;
+					}
+					// Check if it's a number (iteration count)
+					else if (!token.empty() && (isdigit(token[0]) || token[0] == '.'))
+					{
+						char* endptr;
+						float val = strtof(token.c_str(), &endptr);
+						if (*endptr == '\0') {
+							spec.iteration_count = val;
+						}
+					}
+					// Animation name (any unrecognized identifier)
+					else if (spec.name.empty() && token != "none")
+					{
+						spec.name = token;
+					}
+				}
+
+				if (!spec.name.empty())
+				{
+					m_animations.push_back(spec);
+				}
+			}
+
+			pos = comma + 1;
+		}
+	}
+
 	m_css_text_indent = el->get_property<css_length>(_text_indent_, true, 0, offset(m_css_text_indent));
 	doc->cvt_units(m_css_text_indent, m_font_metrics, 0);
 
