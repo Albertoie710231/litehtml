@@ -328,6 +328,7 @@ STRING_ID(
 
 	_opacity_,
 	_box_shadow_,
+	_filter_,
 
 	// CSS Transform
 	_transform_,

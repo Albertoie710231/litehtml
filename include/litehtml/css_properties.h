@@ -124,6 +124,7 @@ namespace litehtml
 
 		float					m_opacity = 1.0f;
 		std::vector<box_shadow>	m_box_shadows;
+		string					m_filter;  // CSS filter property string
 
 		// CSS Transform
 		string					m_transform_str;
@@ -344,6 +345,9 @@ namespace litehtml
 
 		const std::vector<box_shadow>& get_box_shadows() const;
 		void set_box_shadows(const std::vector<box_shadow>& shadows);
+
+		const string& get_filter() const;
+		void set_filter(const string& filter);
 
 		// CSS Transform
 		const TransformMatrix& get_transform_matrix() const;
@@ -847,6 +851,16 @@ namespace litehtml
 	inline void css_properties::set_box_shadows(const std::vector<box_shadow>& shadows)
 	{
 		m_box_shadows = shadows;
+	}
+
+	inline const string& css_properties::get_filter() const
+	{
+		return m_filter;
+	}
+
+	inline void css_properties::set_filter(const string& filter)
+	{
+		m_filter = filter;
 	}
 
 	inline int css_properties::get_text_decoration_line() const

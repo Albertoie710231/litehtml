@@ -226,6 +226,7 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 	m_content = el->get_property<string>(_content_, false, "", offset(m_content));
 	m_cursor = el->get_property<string>(_cursor_, true, "auto", offset(m_cursor));
 	m_opacity = el->get_property<float>(_opacity_, false, 1.0f, offset(m_opacity));
+	m_filter = el->get_property<string>(_filter_, false, "none", offset(m_filter));
 
 	// CSS Transform
 	m_transform_str = el->get_property<string>(_transform_, false, "none", offset(m_transform_str));

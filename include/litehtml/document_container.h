@@ -59,6 +59,11 @@ namespace litehtml
 		// Default implementation does nothing (no transform support)
 		virtual void				set_current_transform(const TransformMatrix& /*transform*/) {}
 
+		// CSS Filter: called before/after drawing an element with CSS filter
+		// Default implementation does nothing (no filter support)
+		virtual void				begin_filter(const litehtml::string& /*filter*/) {}
+		virtual void				end_filter() {}
+
 		virtual	void				set_caption(const char* caption) = 0;
 		virtual	void				set_base_url(const char* base_url) = 0;
 		virtual void				link(const std::shared_ptr<litehtml::document>& doc, const litehtml::element::ptr& el) = 0;

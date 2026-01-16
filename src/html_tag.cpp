@@ -315,6 +315,13 @@ void litehtml::html_tag::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 		get_document()->container()->set_current_transform(TransformMatrix::identity());
 	}
 
+	// Begin CSS filter if present
+	const string& filter = m_css.get_filter();
+	bool has_filter = !filter.empty() && filter != "none";
+	if (has_filter) {
+		get_document()->container()->begin_filter(filter);
+	}
+
 	draw_background(hdc, x, y, clip, ri);
 
 	if(m_css.get_display() == display_list_item &&
@@ -340,6 +347,11 @@ void litehtml::html_tag::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 		{
 			get_document()->container()->del_clip();
 		}
+	}
+
+	// End CSS filter
+	if (has_filter) {
+		get_document()->container()->end_filter();
 	}
 }
 

@@ -540,6 +540,15 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 		add_parsed_property(name, property_value(str, important));
 		break;
 
+	case _filter_: // https://developer.mozilla.org/en-US/docs/Web/CSS/filter
+		// filter: none | <filter-function-list>
+		// Store as raw string and parse in DocumentContainer::begin_filter
+		if (ident == "none")
+			add_parsed_property(name, property_value(string("none"), important));
+		else
+			add_parsed_property(name, property_value(get_repr(value, 0, -1, true), important));
+		break;
+
 	//  =============================  CSS TRANSFORM  =============================
 
 	case _transform_:
