@@ -1,5 +1,6 @@
 #include "html.h"
 #include "css_properties.h"
+#include "css_transform.h"
 #include <cmath>
 #include <sstream>
 #include "document.h"
@@ -225,6 +226,18 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 	m_content = el->get_property<string>(_content_, false, "", offset(m_content));
 	m_cursor = el->get_property<string>(_cursor_, true, "auto", offset(m_cursor));
 	m_opacity = el->get_property<float>(_opacity_, false, 1.0f, offset(m_opacity));
+
+	// CSS Transform
+	m_transform_str = el->get_property<string>(_transform_, false, "none", offset(m_transform_str));
+	if (!m_transform_str.empty() && m_transform_str != "none")
+		m_transform_matrix = CSSTransform::parse(m_transform_str);
+	else
+		m_transform_matrix = TransformMatrix::identity();
+
+	// Transform origin (default: 50% 50%)
+	m_transform_origin_x = css_length(50, css_units_percentage);
+	m_transform_origin_y = css_length(50, css_units_percentage);
+	// TODO: Parse transform-origin string if provided
 
 	// Parse box-shadow
 	string box_shadow_str = el->get_property<string>(_box_shadow_, false, "", offset(m_box_shadows));

@@ -12,6 +12,7 @@
 #include "render_item.h"
 #include "internal.h"
 #include "document_container.h"
+#include "css_transform.h"
 
 namespace litehtml
 {
@@ -305,6 +306,14 @@ void litehtml::html_tag::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position
 	position pos = ri->pos();
 	pos.x	+= x;
 	pos.y	+= y;
+
+	// Set current transform on the container before drawing
+	// Pass the raw transform matrix - the renderer will apply it around each primitive's center
+	if (m_css.has_transform()) {
+		get_document()->container()->set_current_transform(m_css.get_transform_matrix());
+	} else {
+		get_document()->container()->set_current_transform(TransformMatrix::identity());
+	}
 
 	draw_background(hdc, x, y, clip, ri);
 

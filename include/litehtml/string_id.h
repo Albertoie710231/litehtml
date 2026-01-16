@@ -329,6 +329,10 @@ STRING_ID(
 	_opacity_,
 	_box_shadow_,
 
+	// CSS Transform
+	_transform_,
+	_transform_origin_,
+
 	// CSS Transitions
 	_transition_,
 	_transition_property_,

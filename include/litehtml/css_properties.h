@@ -8,6 +8,7 @@
 #include "css_offsets.h"
 #include "background.h"
 #include "web_color.h"
+#include "css_transform.h"
 
 namespace litehtml
 {
@@ -123,6 +124,12 @@ namespace litehtml
 
 		float					m_opacity = 1.0f;
 		std::vector<box_shadow>	m_box_shadows;
+
+		// CSS Transform
+		string					m_transform_str;
+		TransformMatrix			m_transform_matrix;
+		css_length				m_transform_origin_x;
+		css_length				m_transform_origin_y;
 
 		// CSS Transitions
 		transition_spec_vector	m_transitions;
@@ -337,6 +344,12 @@ namespace litehtml
 
 		const std::vector<box_shadow>& get_box_shadows() const;
 		void set_box_shadows(const std::vector<box_shadow>& shadows);
+
+		// CSS Transform
+		const TransformMatrix& get_transform_matrix() const;
+		bool has_transform() const;
+		css_length get_transform_origin_x() const;
+		css_length get_transform_origin_y() const;
 
 		// CSS Transitions
 		const transition_spec_vector& get_transitions() const;
@@ -890,6 +903,12 @@ namespace litehtml
 	{
 		m_animations = animations;
 	}
+
+	// CSS Transform inline implementations
+	inline const TransformMatrix& css_properties::get_transform_matrix() const { return m_transform_matrix; }
+	inline bool css_properties::has_transform() const { return !m_transform_matrix.isIdentity(); }
+	inline css_length css_properties::get_transform_origin_x() const { return m_transform_origin_x; }
+	inline css_length css_properties::get_transform_origin_y() const { return m_transform_origin_y; }
 }
 
 #endif //LITEHTML_CSS_PROPERTIES_H

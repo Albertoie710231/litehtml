@@ -540,6 +540,19 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 		add_parsed_property(name, property_value(str, important));
 		break;
 
+	//  =============================  CSS TRANSFORM  =============================
+
+	case _transform_:
+		if (ident == "none")
+			add_parsed_property(name, property_value(string("none"), important));
+		else
+			add_parsed_property(name, property_value(get_repr(value, 0, -1, true), important));
+		break;
+
+	case _transform_origin_:
+		add_parsed_property(name, property_value(get_repr(value, 0, -1, true), important));
+		break;
+
 	//  =============================  CSS TRANSITIONS  =============================
 
 	case _transition_property_:

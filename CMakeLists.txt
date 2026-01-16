@@ -23,6 +23,7 @@ set(SOURCE_LITEHTML
 	src/css_selector.cpp
 	src/css_tokenizer.cpp
 	src/css_parser.cpp
+	src/css_transform.cpp
 	src/document.cpp
 	src/document_container.cpp
 	src/el_anchor.cpp
@@ -95,6 +96,7 @@ set(HEADER_LITEHTML
 	include/litehtml/css_selector.h
 	include/litehtml/css_parser.h
 	include/litehtml/css_tokenizer.h
+	include/litehtml/css_transform.h
 	include/litehtml/document.h
 	include/litehtml/document_container.h
 	include/litehtml/el_anchor.h

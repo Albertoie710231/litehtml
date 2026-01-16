@@ -7,6 +7,7 @@
 #include "borders.h"
 #include "element.h"
 #include "font_description.h"
+#include "css_transform.h"
 #include <memory>
 #include <functional>
 #include <vector>
@@ -53,6 +54,10 @@ namespace litehtml
 		virtual void				draw_conic_gradient(litehtml::uint_ptr hdc, const background_layer& layer, const background_layer::conic_gradient& gradient) = 0;
 		virtual void				draw_borders(litehtml::uint_ptr hdc, const litehtml::borders& borders, const litehtml::position& draw_pos, bool root) = 0;
 		virtual void				draw_box_shadow(litehtml::uint_ptr /*hdc*/, const std::vector<box_shadow>& /*shadows*/, const litehtml::position& /*draw_pos*/) {}
+
+		// CSS Transform: called before drawing an element to set the current transform matrix
+		// Default implementation does nothing (no transform support)
+		virtual void				set_current_transform(const TransformMatrix& /*transform*/) {}
 
 		virtual	void				set_caption(const char* caption) = 0;
 		virtual	void				set_base_url(const char* base_url) = 0;
