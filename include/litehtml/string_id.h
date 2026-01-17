@@ -425,6 +425,9 @@ STRING_ID(
 	_device_aspect_ratio_,
 	_color_index_,
 	_monochrome_,
+	_prefers_color_scheme_,
+	_light_,
+	_dark_,
 )
 #undef STRING_ID
 extern const string_id empty_id; // _id("")

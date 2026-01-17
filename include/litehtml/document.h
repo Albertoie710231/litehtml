@@ -108,6 +108,8 @@ namespace litehtml
 		std::shared_ptr<element>		create_element(const char* tag_name, const string_map& attributes);
 		std::shared_ptr<element>		root();
 		std::shared_ptr<render_item>	root_render();
+		void							rebuild_render_tree();  // Rebuild render tree after DOM modifications
+		void							apply_stylesheets_to_element(std::shared_ptr<element> el);  // Apply document stylesheets to element
 		void							get_fixed_boxes(position::vector& fixed_boxes);
 		void							add_fixed_box(const position& pos);
 		void							add_media_list(media_query_list_list::ptr list);

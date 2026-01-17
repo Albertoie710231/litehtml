@@ -956,6 +956,7 @@ namespace litehtml
 		int			color_index;	// The number of entries in the color lookup table of the output device. If the device does not use a color lookup table, the value is zero.
 		int			monochrome;		// The number of bits per pixel in a monochrome frame buffer. If the device is not a monochrome device, the output device value will be 0.
 		pixel_t		resolution;		// The resolution of the output device (in DPI)
+		int			prefers_color_scheme;	// 0 = light, 1 = dark (for prefers-color-scheme media query)
 
 		media_features()
 		{
@@ -968,6 +969,7 @@ namespace litehtml
 			color_index = 0;
 			monochrome = 0;
 			resolution = 0;
+			prefers_color_scheme = 0;	// Default to light mode
 		}
 	};
 

@@ -68,6 +68,10 @@ bool media_feature::check(const media_features& feat) const
 		return compare(feat.monochrome);
 	case _resolution_:
 		return compare(feat.resolution);
+	case _prefers_color_scheme_:
+		// 0 = light, 1 = dark in feat.prefers_color_scheme
+		// value is string_id: _light_ or _dark_
+		return compare(feat.prefers_color_scheme == 0 ? _light_ : _dark_);
 	default:
 		assert(0); // must never happen, unknown media features are handled in parse_media_feature
 		return false;
@@ -385,6 +389,14 @@ std::map<string, mf_info> supported_media_features =
 
 	// https://drafts.csswg.org/mediaqueries/#monochrome
 	{"monochrome", {_range_, _integer_}},
+
+
+	////////////////////////////////////////////////
+	// 11. User Preference Media Features
+	////////////////////////////////////////////////
+
+	// https://drafts.csswg.org/mediaqueries-5/#prefers-color-scheme
+	{"prefers-color-scheme", {_discrete_, _keyword_, {_light_, _dark_}}},
 
 
 	////////////////////////////////////////////////

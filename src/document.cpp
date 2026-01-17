@@ -225,6 +225,46 @@ document::ptr document::createFromString(
 	return doc;
 }
 
+void document::rebuild_render_tree()
+{
+	if (!m_root) return;
+
+	// Clear tabular elements for fresh table layout
+	m_tabular_elements.clear();
+
+	// Recreate the render tree from the DOM tree
+	m_root_render = m_root->create_render_item(nullptr);
+
+	// Fix tables layout (creates anonymous boxes for tables)
+	fix_tables_layout();
+
+	// Initialize the render tree
+	if (m_root_render)
+	{
+		m_root_render = render_item::init_tree(m_root_render);
+	}
+}
+
+void document::apply_stylesheets_to_element(std::shared_ptr<element> el)
+{
+	if (!el) return;
+
+	// Apply master CSS (browser defaults)
+	el->apply_stylesheet(m_master_css);
+
+	// Parse element attributes (for style attribute, etc.)
+	el->parse_attributes();
+
+	// Apply document styles (from <style> tags and linked stylesheets)
+	el->apply_stylesheet(m_styles);
+
+	// Apply user styles if any
+	el->apply_stylesheet(m_user_css);
+
+	// Compute the final styles
+	el->compute_styles();
+}
+
 // https://html.spec.whatwg.org/multipage/parsing.html#change-the-encoding
 encoding adjust_meta_encoding(encoding meta_encoding, encoding current_encoding)
 {
