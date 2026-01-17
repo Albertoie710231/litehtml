@@ -1,6 +1,7 @@
 #include "html.h"
 #include "el_textarea.h"
 #include "render_item.h"
+#include "render_image.h"
 #include "document_container.h"
 
 namespace litehtml
@@ -100,7 +101,7 @@ string el_textarea::dump_get_name()
 
 std::shared_ptr<render_item> el_textarea::create_render_item(const std::shared_ptr<render_item>& parent_ri)
 {
-	auto ret = std::make_shared<render_item>(shared_from_this());
+	auto ret = std::make_shared<render_item_image>(shared_from_this());
 	ret->parent(parent_ri);
 	return ret;
 }

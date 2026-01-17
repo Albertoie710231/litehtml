@@ -1,6 +1,7 @@
 #include "html.h"
 #include "el_input.h"
 #include "render_item.h"
+#include "render_image.h"  // For render_item_image (used for replaced elements)
 #include "document_container.h"
 
 namespace litehtml
@@ -137,8 +138,8 @@ string el_input::dump_get_name()
 
 std::shared_ptr<render_item> el_input::create_render_item(const std::shared_ptr<render_item>& parent_ri)
 {
-	// Use standard render_item for form controls
-	auto ret = std::make_shared<render_item>(shared_from_this());
+	// Use render_item_image for proper replaced element sizing
+	auto ret = std::make_shared<render_item_image>(shared_from_this());
 	ret->parent(parent_ri);
 	return ret;
 }
