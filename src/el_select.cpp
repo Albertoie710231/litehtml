@@ -81,7 +81,8 @@ void el_select::get_content_size(size& sz, pixel_t /*max_width*/)
 
 void el_select::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, const std::shared_ptr<render_item>& ri)
 {
-	html_tag::draw(hdc, x, y, clip, ri);
+	// Don't call html_tag::draw - form controls are replaced elements
+	// that handle all their own drawing via draw_form_control
 
 	position pos = ri->pos();
 	pos.x += x;

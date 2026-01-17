@@ -92,12 +92,42 @@ void el_input::compute_styles(bool recursive, bool use_cache)
 
 void el_input::get_content_size(size& sz, pixel_t /*max_width*/)
 {
-	get_document()->container()->get_form_control_size(m_type, sz);
+	// For button types, measure the text
+	if (m_type == form_control_input_submit ||
+	    m_type == form_control_input_reset ||
+	    m_type == form_control_input_button)
+	{
+		string text = m_value;
+		if (text.empty()) {
+			if (m_type == form_control_input_submit) text = "Submit";
+			else if (m_type == form_control_input_reset) text = "Reset";
+			else text = "Button";
+		}
+
+		auto doc = get_document();
+		auto container = doc->container();
+		uint_ptr font = css().get_font();
+
+		if (font) {
+			sz.width = container->text_width(text.c_str(), font);
+		} else {
+			sz.width = static_cast<pixel_t>(text.length() * 8);
+		}
+
+		sz.width += 20;  // Padding
+		sz.height = css().get_font_metrics().height + 8;
+		if (sz.height < 24) sz.height = 24;
+	}
+	else
+	{
+		get_document()->container()->get_form_control_size(m_type, sz);
+	}
 }
 
 void el_input::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, const std::shared_ptr<render_item>& ri)
 {
-	html_tag::draw(hdc, x, y, clip, ri);
+	// Don't call html_tag::draw - form controls are replaced elements
+	// that handle all their own drawing via draw_form_control
 
 	position pos = ri->pos();
 	pos.x += x;

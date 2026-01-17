@@ -810,6 +810,10 @@ void litehtml::render_item::draw_stacking_context( uint_ptr hdc, pixel_t x, pixe
 
     if(!is_visible()) return;
 
+    // Replaced elements (images, form controls) handle their own content drawing
+    // and should not draw children
+    if(src_el()->is_replaced()) return;
+
     std::map<int, bool> z_indexes;
     if(with_positioned)
     {

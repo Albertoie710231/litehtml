@@ -32,12 +32,37 @@ void el_button::compute_styles(bool recursive, bool use_cache)
 
 void el_button::get_content_size(size& sz, pixel_t /*max_width*/)
 {
-	get_document()->container()->get_form_control_size(form_control_button, sz);
+	// Get button text
+	string text = get_value();
+	if (text.empty()) {
+		text = "Button";
+	}
+
+	// Measure text width using the element's font
+	auto doc = get_document();
+	auto container = doc->container();
+
+	// Get font metrics
+	uint_ptr font = css().get_font();
+	if (font) {
+		sz.width = container->text_width(text.c_str(), font);
+	} else {
+		// Fallback: estimate based on character count
+		sz.width = static_cast<pixel_t>(text.length() * 8);
+	}
+
+	// Add padding (10px on each side)
+	sz.width += 20;
+
+	// Height based on font size + padding
+	sz.height = css().get_font_metrics().height + 8;
+	if (sz.height < 24) sz.height = 24;
 }
 
 void el_button::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, const std::shared_ptr<render_item>& ri)
 {
-	html_tag::draw(hdc, x, y, clip, ri);
+	// Don't call html_tag::draw - form controls are replaced elements
+	// that handle all their own drawing via draw_form_control
 
 	position pos = ri->pos();
 	pos.x += x;
