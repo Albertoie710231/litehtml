@@ -332,7 +332,12 @@ option {
 
 input, textarea, keygen, select, button, isindex {
 	margin: 0em;
-	color: initial;
+	font-family: inherit;
+	font-size: inherit;
+	color: #333333;
+	background-color: #ffffff;
+	border: 1px solid #aaaaaa;
+	padding: 4px;
 	line-height: normal;
 	text-transform: none;
 	text-indent: 0;
@@ -341,18 +346,54 @@ input, textarea, keygen, select, button, isindex {
 	vertical-align: baseline;
 	box-sizing: border-box;
 }
+
+input:focus, textarea:focus, select:focus, button:focus {
+	border-color: #4488ff;
+	outline: none;
+}
+
+input:hover, textarea:hover, select:hover, button:hover {
+	border-color: #666666;
+}
+
+input:disabled, textarea:disabled, select:disabled, button:disabled {
+	background-color: #eeeeee;
+	color: #888888;
+}
+
 input[type="hidden"] {
 	display: none;
 }
+
+input[type="text"], input[type="password"], input[type="number"], input[type="email"], input[type="date"] {
+	width: 150px;
+	height: 24px;
+}
+
 input[type="checkbox"], input[type="radio"] {
+	width: 16px;
+	height: 16px;
+	padding: 0;
 	vertical-align: middle;
 }
+
 button, input[type="submit"], input[type="reset"], input[type="button"] {
 	text-align: center;
+	padding: 4px 10px;
+	min-height: 24px;
+	cursor: pointer;
 }
+
 textarea {
+	width: 200px;
+	height: 100px;
 	white-space: pre-wrap;
 	overflow: auto;
+}
+
+select {
+	width: 150px;
+	height: 24px;
 }
 
 

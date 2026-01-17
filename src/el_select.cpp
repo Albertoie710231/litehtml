@@ -72,10 +72,21 @@ void el_select::get_content_size(size& sz, pixel_t /*max_width*/)
 {
 	get_document()->container()->get_form_control_size(form_control_select, sz);
 
+	const auto& c = css();
+
+	// Use CSS line height for row sizing
+	pixel_t lineHeight = c.line_height().computed_value;
+	if (lineHeight <= 0) {
+		lineHeight = c.get_font_metrics().height;
+	}
+	if (lineHeight <= 0) {
+		lineHeight = 18;  // Fallback
+	}
+
 	// Adjust height for multiple/size
 	if (m_size > 1)
 	{
-		sz.height = m_size * 18; // Approximate line height
+		sz.height = m_size * lineHeight;
 	}
 }
 
@@ -97,6 +108,31 @@ void el_select::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, c
 		state.disabled = m_disabled;
 		state.selected_index = m_selected_index;
 		state.value = get_value();
+
+		// Extract CSS properties from computed styles
+		const auto& c = css();
+		state.text_color = c.get_color();
+		state.background_color = c.get_bg().m_color;
+
+		// Use left border as the reference for border properties
+		const auto& borders = c.get_borders();
+		state.border_color = borders.left.color;
+		state.border_width = static_cast<pixel_t>(borders.left.width.val());
+
+		// Get padding values
+		const auto& padding = c.get_padding();
+		state.padding_left = static_cast<pixel_t>(padding.left.val());
+		state.padding_right = static_cast<pixel_t>(padding.right.val());
+		state.padding_top = static_cast<pixel_t>(padding.top.val());
+		state.padding_bottom = static_cast<pixel_t>(padding.bottom.val());
+
+		// Get font properties
+		state.font_size = c.get_font_size();
+		state.font = c.get_font();
+		state.line_height = c.line_height().computed_value;
+		if (state.line_height <= 0) {
+			state.line_height = c.get_font_metrics().height;
+		}
 
 		get_document()->container()->draw_form_control(hdc, form_control_select, pos, state);
 	}

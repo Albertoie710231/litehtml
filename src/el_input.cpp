@@ -92,6 +92,13 @@ void el_input::compute_styles(bool recursive, bool use_cache)
 
 void el_input::get_content_size(size& sz, pixel_t /*max_width*/)
 {
+	const auto& c = css();
+	const auto& padding = c.get_padding();
+	pixel_t padLeft = static_cast<pixel_t>(padding.left.val());
+	pixel_t padRight = static_cast<pixel_t>(padding.right.val());
+	pixel_t padTop = static_cast<pixel_t>(padding.top.val());
+	pixel_t padBottom = static_cast<pixel_t>(padding.bottom.val());
+
 	// For button types, measure the text
 	if (m_type == form_control_input_submit ||
 	    m_type == form_control_input_reset ||
@@ -106,7 +113,7 @@ void el_input::get_content_size(size& sz, pixel_t /*max_width*/)
 
 		auto doc = get_document();
 		auto container = doc->container();
-		uint_ptr font = css().get_font();
+		uint_ptr font = c.get_font();
 
 		if (font) {
 			sz.width = container->text_width(text.c_str(), font);
@@ -114,8 +121,9 @@ void el_input::get_content_size(size& sz, pixel_t /*max_width*/)
 			sz.width = static_cast<pixel_t>(text.length() * 8);
 		}
 
-		sz.width += 20;  // Padding
-		sz.height = css().get_font_metrics().height + 8;
+		// Add CSS padding
+		sz.width += padLeft + padRight;
+		sz.height = c.get_font_metrics().height + padTop + padBottom;
 		if (sz.height < 24) sz.height = 24;
 	}
 	else
@@ -144,6 +152,35 @@ void el_input::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, co
 		state.readonly = m_readonly;
 		state.value = m_value;
 		state.placeholder = m_placeholder;
+
+		// Extract CSS properties from computed styles
+		const auto& c = css();
+		state.text_color = c.get_color();
+		state.background_color = c.get_bg().m_color;
+
+		// Use left border as the reference for border properties
+		const auto& borders = c.get_borders();
+		state.border_color = borders.left.color;
+		state.border_width = static_cast<pixel_t>(borders.left.width.val());
+
+		// Get padding values
+		const auto& padding = c.get_padding();
+		state.padding_left = static_cast<pixel_t>(padding.left.val());
+		state.padding_right = static_cast<pixel_t>(padding.right.val());
+		state.padding_top = static_cast<pixel_t>(padding.top.val());
+		state.padding_bottom = static_cast<pixel_t>(padding.bottom.val());
+
+		// Get font properties
+		state.font_size = c.get_font_size();
+		state.font = c.get_font();
+		state.line_height = c.line_height().computed_value;
+		if (state.line_height <= 0) {
+			state.line_height = c.get_font_metrics().height;
+		}
+
+		// Placeholder color: use text color with reduced alpha
+		state.placeholder_color = state.text_color;
+		state.placeholder_color.alpha = 128;  // 50% opacity
 
 		get_document()->container()->draw_form_control(hdc, m_type, pos, state);
 	}

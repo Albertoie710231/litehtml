@@ -41,6 +41,7 @@ namespace litehtml
 	// Form control state for rendering
 	struct form_control_state
 	{
+		// Interaction state
 		bool focused = false;
 		bool hovered = false;
 		bool checked = false;
@@ -50,7 +51,28 @@ namespace litehtml
 		string placeholder;
 		int selected_index = -1;
 
-		form_control_state() = default;
+		// CSS properties for rendering (extracted from element's computed styles)
+		web_color text_color;
+		web_color background_color;
+		web_color border_color;
+		web_color placeholder_color;  // For placeholder text (fallback: text_color with reduced alpha)
+
+		pixel_t border_width = 1;
+		pixel_t padding_left = 4;
+		pixel_t padding_right = 4;
+		pixel_t padding_top = 4;
+		pixel_t padding_bottom = 4;
+		pixel_t font_size = 14;
+		pixel_t line_height = 16;
+
+		uint_ptr font = 0;  // Font handle for text rendering
+
+		form_control_state() :
+			text_color(0x33, 0x33, 0x33),          // #333333
+			background_color(0xFF, 0xFF, 0xFF),    // #FFFFFF
+			border_color(0xAA, 0xAA, 0xAA),        // #AAAAAA
+			placeholder_color(0x88, 0x88, 0x88)    // #888888
+		{}
 	};
 
 	struct list_marker
