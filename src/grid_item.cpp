@@ -122,11 +122,10 @@ void litehtml::grid_item::place(pixel_t cell_x, pixel_t cell_y, pixel_t cell_w, 
 
 	if (shrink_width || shrink_height)
 	{
-		// Measure content size
-		el->render(0, 0, self_size.new_width(el->content_offset_width(),
+		// Measure content size - use cell dimensions as max available space
+		// size_mode_content makes the element shrink to fit its content
+		pixel_t content_w = el->render(0, 0, self_size.new_width(cell_w,
 			containing_block_context::size_mode_content), fmt_ctx, false);
-
-		pixel_t content_w = el->width();
 		pixel_t content_h = el->height();
 
 		// Apply content size only to axes that need it
@@ -190,7 +189,7 @@ void litehtml::grid_item::place(pixel_t cell_x, pixel_t cell_y, pixel_t cell_w, 
 	width = item_w;
 	height = item_h;
 
-	// Final render at correct position with correct size
+	// Final render with correct size
 	// Use size_mode flags to force exact dimensions for stretch alignment
 	int size_mode = 0;
 	if ((justify & 0xFF) == flex_align_items_stretch ||
@@ -204,6 +203,15 @@ void litehtml::grid_item::place(pixel_t cell_x, pixel_t cell_y, pixel_t cell_w, 
 		size_mode |= containing_block_context::size_mode_exact_height;
 	}
 
-	containing_block_context final_ctx = self_size.new_width_height(item_w, item_h, size_mode);
-	el->render(pos_x, pos_y, final_ctx, fmt_ctx, false);
+	// Render at (0, 0) to establish size (like flexbox does)
+	// For stretch: subtract content offset (cell size is border-box, need content-box)
+	// For shrink-to-fit: content_w is already the correct border-box from measurement
+	pixel_t render_w = shrink_width ? item_w : (item_w - el->content_offset_width());
+	pixel_t render_h = shrink_height ? item_h : (item_h - el->content_offset_height());
+	containing_block_context final_ctx = self_size.new_width_height(render_w, render_h, size_mode);
+	el->render(0, 0, final_ctx, fmt_ctx, false);
+
+	// Explicitly set position (like flexbox does via set_main_position/set_cross_position)
+	el->pos().x = pos_x + el->content_offset_left();
+	el->pos().y = pos_y + el->content_offset_top();
 }
