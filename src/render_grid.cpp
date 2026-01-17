@@ -10,27 +10,10 @@ namespace litehtml
 
 std::shared_ptr<render_item> render_item_grid::init()
 {
-	// Initialize like block, then collect grid items
-	auto ret = render_item_block::init();
-
-	// Grid items are direct children
-	m_items.clear();
-	int src_order = 0;
-	for (auto& child : children())
-	{
-		// Skip absolutely positioned and fixed elements
-		if (child->src_el()->css().get_position() == element_position_absolute ||
-			child->src_el()->css().get_position() == element_position_fixed)
-		{
-			continue;
-		}
-
-		auto item = std::make_shared<grid_item>(child);
-		item->src_order = src_order++;
-		m_items.push_back(item);
-	}
-
-	return ret;
+	// Don't call child->init() here - init_tree() handles that iteratively
+	// to avoid stack overflow and ensure proper ordering.
+	// Just return ourselves so we don't get replaced by a block_context.
+	return shared_from_this();
 }
 
 // Helper to parse a single track value (e.g., "1fr", "100px", "auto")
@@ -554,6 +537,24 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 										   const containing_block_context& self_size,
 										   formatting_context* fmt_ctx)
 {
+	// Collect grid items from m_children (which have been initialized by init_tree())
+	m_items.clear();
+	int src_order = 0;
+	for (auto& child : m_children)
+	{
+		if (child->src_el()->css().get_position() == element_position_absolute ||
+			child->src_el()->css().get_position() == element_position_fixed)
+			continue;
+		if (child->src_el()->is_white_space())
+			continue;
+		if (child->src_el()->css().get_display() == display_none)
+			continue;
+
+		auto item = std::make_shared<grid_item>(child);
+		item->src_order = src_order++;
+		m_items.push_back(item);
+	}
+
 	// Get gap values
 	m_column_gap = (pixel_t)css().get_column_gap().val();
 	m_row_gap = (pixel_t)css().get_row_gap().val();
@@ -564,7 +565,8 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 
 	// Parse track templates with auto-repeat info collection
 	m_columns.clear();
-	parse_track_list(css().get_grid_template_columns(), m_columns, m_col_auto_repeat);
+	string col_template = css().get_grid_template_columns();
+	parse_track_list(col_template, m_columns, m_col_auto_repeat);
 
 	m_rows.clear();
 	parse_track_list(css().get_grid_template_rows(), m_rows, m_row_auto_repeat);
@@ -581,7 +583,16 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 		m_columns.push_back(auto_col);
 	}
 
-	// Ensure we have enough rows for all items
+	// Initialize items to get their CSS grid placement values
+	for (auto& item : m_items)
+	{
+		item->init(self_size, fmt_ctx);
+	}
+
+	// Place items (resolve auto-placement) - must be done before track sizing
+	place_items();
+
+	// Now ensure we have enough rows for all items (after placement is resolved)
 	int max_row = 1;
 	for (const auto& item : m_items)
 	{
@@ -594,12 +605,9 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 		m_rows.push_back(auto_row);
 	}
 
-	// Initialize items and get their content sizes
+	// Contribute item sizes to track min sizes
 	for (auto& item : m_items)
 	{
-		item->init(self_size, fmt_ctx);
-
-		// Contribute to track min sizes
 		int col = item->resolved_col_start;
 		int row = item->resolved_row_start;
 
@@ -613,15 +621,12 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 		}
 	}
 
-	// Place items (resolve auto-placement)
-	place_items();
-
 	// Size tracks (available_width already calculated above)
 	pixel_t total_col_gap = m_columns.size() > 1 ? (m_columns.size() - 1) * m_column_gap : 0;
 	size_tracks(m_columns, available_width - total_col_gap, true);
 
-	// Calculate column positions
-	calculate_track_positions(m_columns, m_column_gap, x);
+	// Calculate column positions - relative to container (start at 0)
+	calculate_track_positions(m_columns, m_column_gap, 0);
 
 	// Now size rows based on item heights after column sizing
 	for (auto& item : m_items)
@@ -681,8 +686,12 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 		}
 	}
 
-	// Calculate row positions
-	calculate_track_positions(m_rows, m_row_gap, y);
+	// Calculate row positions - relative to container (start at 0)
+	calculate_track_positions(m_rows, m_row_gap, 0);
+
+	// Get container alignment properties
+	flex_align_items justify_items = css().get_justify_items();
+	flex_align_items align_items = css().get_flex_align_items();
 
 	// Place each item in its grid cell
 	for (auto& item : m_items)
@@ -714,17 +723,28 @@ pixel_t render_item_grid::_render_content(pixel_t x, pixel_t y, bool /*second_pa
 			if (r < row_end - 1) cell_height += m_row_gap;
 		}
 
-		item->place(cell_x, cell_y, cell_width, cell_height, self_size, fmt_ctx);
+		item->place(cell_x, cell_y, cell_width, cell_height, self_size, fmt_ctx,
+		            justify_items, align_items);
 	}
 
-	// Calculate total grid height
+	// Calculate total grid height (positions are relative, so no need to subtract y)
 	pixel_t total_height = 0;
 	if (!m_rows.empty())
 	{
-		total_height = m_rows.back().position + m_rows.back().base_size - y;
+		total_height = m_rows.back().position + m_rows.back().base_size;
 	}
 
-	return total_height;
+	// Set the container height (like flex does)
+	m_pos.height = std::max(m_pos.height, total_height);
+
+	// Calculate total grid width for return value (positions are relative)
+	pixel_t total_width = 0;
+	if (!m_columns.empty())
+	{
+		total_width = m_columns.back().position + m_columns.back().base_size;
+	}
+
+	return total_width;
 }
 
 } // namespace litehtml

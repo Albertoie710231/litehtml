@@ -3,6 +3,7 @@
 
 #include "formatting_context.h"
 #include "render_item.h"
+#include "types.h"
 
 namespace litehtml
 {
@@ -79,9 +80,11 @@ namespace litehtml
 		// Get the number of rows this item spans
 		int row_span() const { return resolved_row_end - resolved_row_start; }
 
-		// Place the item at the specified position
+		// Place the item at the specified position with alignment
 		void place(pixel_t x, pixel_t y, pixel_t w, pixel_t h,
-				   const containing_block_context& self_size, formatting_context* fmt_ctx);
+				   const containing_block_context& self_size, formatting_context* fmt_ctx,
+				   flex_align_items container_justify_items,
+				   flex_align_items container_align_items);
 	};
 }
 

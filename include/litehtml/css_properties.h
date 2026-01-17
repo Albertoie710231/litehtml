@@ -120,6 +120,10 @@ namespace litehtml
 		flex_align_items		m_flex_align_self;
 		flex_align_content		m_flex_align_content;
 
+		// Grid alignment (reuse flex_align_items enum)
+		flex_align_items		m_justify_items;
+		flex_align_items		m_justify_self;
+
 		css_length				m_flex_row_gap;
 		css_length				m_flex_column_gap;
 
@@ -211,6 +215,8 @@ namespace litehtml
 				m_flex_align_items(flex_align_items_stretch),
 				m_flex_align_self(flex_align_items_auto),
 				m_flex_align_content(flex_align_content_stretch),
+				m_justify_items(flex_align_items_stretch),
+				m_justify_self(flex_align_items_auto),
 				m_order(0)
 		{}
 
@@ -352,6 +358,10 @@ namespace litehtml
 		flex_align_items get_flex_align_items() const;
 		flex_align_items get_flex_align_self() const;
 		flex_align_content get_flex_align_content() const;
+
+		// Grid alignment getters
+		flex_align_items get_justify_items() const;
+		flex_align_items get_justify_self() const;
 
 		const css_length& get_row_gap() const;
 		const css_length& get_column_gap() const;
@@ -995,6 +1005,10 @@ namespace litehtml
 	inline bool css_properties::has_transform() const { return !m_transform_matrix.isIdentity(); }
 	inline css_length css_properties::get_transform_origin_x() const { return m_transform_origin_x; }
 	inline css_length css_properties::get_transform_origin_y() const { return m_transform_origin_y; }
+
+	// Grid alignment inline implementations
+	inline flex_align_items css_properties::get_justify_items() const { return m_justify_items; }
+	inline flex_align_items css_properties::get_justify_self() const { return m_justify_self; }
 }
 
 #endif //LITEHTML_CSS_PROPERTIES_H

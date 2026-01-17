@@ -999,6 +999,10 @@ void litehtml::css_properties::compute_grid(const html_tag* el, const document::
 		m_flex_column_gap = el->get_property<css_length>(_column_gap_, false, 0, offset(m_flex_column_gap));
 		doc->cvt_units(m_flex_row_gap, m_font_metrics, 0);
 		doc->cvt_units(m_flex_column_gap, m_font_metrics, 0);
+
+		// Grid alignment properties (container)
+		m_justify_items = (flex_align_items) el->get_property<int>(_justify_items_, false, flex_align_items_stretch, offset(m_justify_items));
+		m_flex_align_items = (flex_align_items) el->get_property<int>(_align_items_, false, flex_align_items_stretch, offset(m_flex_align_items));
 	}
 
 	// Grid item properties (apply to children of grid containers)
@@ -1009,6 +1013,9 @@ void litehtml::css_properties::compute_grid(const html_tag* el, const document::
 		m_grid_column_end = el->get_property<int>(_grid_column_end_, false, 0, offset(m_grid_column_end));
 		m_grid_row_start = el->get_property<int>(_grid_row_start_, false, 0, offset(m_grid_row_start));
 		m_grid_row_end = el->get_property<int>(_grid_row_end_, false, 0, offset(m_grid_row_end));
+
+		// Grid item alignment
+		m_justify_self = (flex_align_items) el->get_property<int>(_justify_self_, false, flex_align_items_auto, offset(m_justify_self));
 
 		// Blockify grid items (similar to flex items)
 		if(m_display == display_inline || m_display == display_inline_block)

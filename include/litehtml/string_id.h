@@ -339,6 +339,13 @@ STRING_ID(
 	_grid_row_,
 	_grid_area_,
 
+	// CSS Grid alignment properties
+	_justify_items_,
+	_justify_self_,
+	_place_items_,
+	_place_self_,
+	_place_content_,
+
 	_caption_side_,
 	_order_,
 

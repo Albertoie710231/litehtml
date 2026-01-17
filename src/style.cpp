@@ -64,6 +64,8 @@ std::map<string_id, string> style::m_valid_values =
 	{ _align_content_, flex_align_content_strings },
 	{ _align_items_, flex_align_items_strings },
 	{ _align_self_, flex_align_items_strings },
+	{ _justify_items_, flex_align_items_strings },
+	{ _justify_self_, flex_align_items_strings },
 
 	{ _caption_side_, caption_side_strings },
 
@@ -765,6 +767,115 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 		// Store as raw string - complex parsing needed
 		str = get_repr(value, 0, -1, true);
 		add_parsed_property(name, property_value(str, important));
+		break;
+
+	//  =============================  GRID ALIGNMENT  =============================
+
+	case _justify_items_:
+	case _justify_self_:
+		// Reuse same parsing as align-items/align-self
+		parse_align_self(name, value, important);
+		break;
+
+	case _place_items_:
+		{
+			// place-items: <align-items> <justify-items>?
+			if (!value.empty())
+			{
+				// Split into parts
+				std::vector<css_token_vector> parts;
+				css_token_vector current_part;
+				for (const auto& tok : value)
+				{
+					current_part.push_back(tok);
+					if (current_part.size() == 1 && parts.empty())
+					{
+						parts.push_back(current_part);
+						current_part.clear();
+					}
+					else if (!current_part.empty())
+					{
+						if (parts.size() < 2)
+						{
+							parts.push_back(current_part);
+						}
+						current_part.clear();
+					}
+				}
+
+				if (!parts.empty())
+				{
+					parse_align_self(_align_items_, parts[0], important);
+					if (parts.size() > 1)
+						parse_align_self(_justify_items_, parts[1], important);
+					else
+						parse_align_self(_justify_items_, parts[0], important);
+				}
+			}
+		}
+		break;
+
+	case _place_self_:
+		{
+			// place-self: <align-self> <justify-self>?
+			if (!value.empty())
+			{
+				std::vector<css_token_vector> parts;
+				css_token_vector current_part;
+				for (const auto& tok : value)
+				{
+					current_part.push_back(tok);
+					if (current_part.size() == 1 && parts.empty())
+					{
+						parts.push_back(current_part);
+						current_part.clear();
+					}
+					else if (!current_part.empty())
+					{
+						if (parts.size() < 2)
+						{
+							parts.push_back(current_part);
+						}
+						current_part.clear();
+					}
+				}
+
+				if (!parts.empty())
+				{
+					parse_align_self(_align_self_, parts[0], important);
+					if (parts.size() > 1)
+						parse_align_self(_justify_self_, parts[1], important);
+					else
+						parse_align_self(_justify_self_, parts[0], important);
+				}
+			}
+		}
+		break;
+
+	case _place_content_:
+		{
+			// place-content: <align-content> <justify-content>?
+			if (!value.empty())
+			{
+				// For align-content/justify-content we use keyword parsing
+				if (value.size() == 1)
+				{
+					// Single value applies to both
+					if (int idx = value_index(value[0].ident(), flex_align_content_strings); idx >= 0)
+						add_parsed_property(_align_content_, property_value(idx, important));
+					if (int idx = value_index(value[0].ident(), flex_justify_content_strings); idx >= 0)
+						add_parsed_property(_justify_content_, property_value(idx, important));
+				}
+				else if (value.size() >= 2)
+				{
+					// First for align-content, second for justify-content
+					if (int idx = value_index(value[0].ident(), flex_align_content_strings); idx >= 0)
+						add_parsed_property(_align_content_, property_value(idx, important));
+					if (int idx = value_index(value[1].ident(), flex_justify_content_strings); idx >= 0)
+						add_parsed_property(_justify_content_, property_value(idx, important));
+				}
+			}
+		}
 		break;
 
 	//  =============================  COUNTER, CONTENT  =============================

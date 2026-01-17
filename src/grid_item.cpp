@@ -90,26 +90,120 @@ void litehtml::grid_item::init(const litehtml::containing_block_context& self_si
 	max_content_height = el->height();
 }
 
-void litehtml::grid_item::place(pixel_t x, pixel_t y, pixel_t w, pixel_t h,
+void litehtml::grid_item::place(pixel_t cell_x, pixel_t cell_y, pixel_t cell_w, pixel_t cell_h,
                                  const containing_block_context& self_size,
-                                 formatting_context* fmt_ctx)
+                                 formatting_context* fmt_ctx,
+                                 flex_align_items container_justify_items,
+                                 flex_align_items container_align_items)
 {
-	pos_x = x;
-	pos_y = y;
-	width = w;
-	height = h;
+	// Get item's self-alignment (overrides container's default)
+	flex_align_items justify = el->src_el()->css().get_justify_self();
+	flex_align_items align = el->src_el()->css().get_flex_align_self();
 
-	// Create containing block context for the grid cell
-	containing_block_context cell_ctx = self_size;
-	cell_ctx.width.value = w;
-	cell_ctx.width.type = containing_block_context::cbc_value_type_absolute;
-	cell_ctx.height.value = h;
-	cell_ctx.height.type = containing_block_context::cbc_value_type_absolute;
+	// If auto, use container's value
+	if (justify == flex_align_items_auto)
+		justify = container_justify_items;
+	if (align == flex_align_items_auto)
+		align = container_align_items;
 
-	// Render the element in its grid cell
-	el->render(x, y, cell_ctx, fmt_ctx, false);
+	// Check alignment for each axis independently
+	bool width_is_auto = el->src_el()->css().get_width().is_predefined();
+	bool height_is_auto = el->src_el()->css().get_height().is_predefined();
 
-	// Set final position
-	el->pos().x = x;
-	el->pos().y = y;
+	bool shrink_width = (justify & 0xFF) != flex_align_items_stretch &&
+	                    (justify & 0xFF) != flex_align_items_normal &&
+	                    width_is_auto;
+	bool shrink_height = (align & 0xFF) != flex_align_items_stretch &&
+	                     (align & 0xFF) != flex_align_items_normal &&
+	                     height_is_auto;
+
+	pixel_t item_w = cell_w;
+	pixel_t item_h = cell_h;
+
+	if (shrink_width || shrink_height)
+	{
+		// Measure content size
+		el->render(0, 0, self_size.new_width(el->content_offset_width(),
+			containing_block_context::size_mode_content), fmt_ctx, false);
+
+		pixel_t content_w = el->width();
+		pixel_t content_h = el->height();
+
+		// Apply content size only to axes that need it
+		if (shrink_width)
+		{
+			item_w = content_w;
+		}
+		if (shrink_height)
+		{
+			item_h = content_h;
+		}
+	}
+
+	// Calculate horizontal offset based on justify
+	pixel_t offset_x = 0;
+	switch (justify & 0xFF)  // Mask off overflow flags
+	{
+		case flex_align_items_center:
+			offset_x = (cell_w - item_w) / 2;
+			break;
+		case flex_align_items_end:
+		case flex_align_items_flex_end:
+		case flex_align_items_self_end:
+			offset_x = cell_w - item_w;
+			break;
+		case flex_align_items_start:
+		case flex_align_items_flex_start:
+		case flex_align_items_self_start:
+		case flex_align_items_stretch:
+		case flex_align_items_normal:
+		default:
+			offset_x = 0;
+			break;
+	}
+
+	// Calculate vertical offset based on align
+	pixel_t offset_y = 0;
+	switch (align & 0xFF)  // Mask off overflow flags
+	{
+		case flex_align_items_center:
+			offset_y = (cell_h - item_h) / 2;
+			break;
+		case flex_align_items_end:
+		case flex_align_items_flex_end:
+		case flex_align_items_self_end:
+			offset_y = cell_h - item_h;
+			break;
+		case flex_align_items_start:
+		case flex_align_items_flex_start:
+		case flex_align_items_self_start:
+		case flex_align_items_stretch:
+		case flex_align_items_normal:
+		default:
+			offset_y = 0;
+			break;
+	}
+
+	// Set final position and size
+	pos_x = cell_x + offset_x;
+	pos_y = cell_y + offset_y;
+	width = item_w;
+	height = item_h;
+
+	// Final render at correct position with correct size
+	// Use size_mode flags to force exact dimensions for stretch alignment
+	int size_mode = 0;
+	if ((justify & 0xFF) == flex_align_items_stretch ||
+	    (justify & 0xFF) == flex_align_items_normal)
+	{
+		size_mode |= containing_block_context::size_mode_exact_width;
+	}
+	if ((align & 0xFF) == flex_align_items_stretch ||
+	    (align & 0xFF) == flex_align_items_normal)
+	{
+		size_mode |= containing_block_context::size_mode_exact_height;
+	}
+
+	containing_block_context final_ctx = self_size.new_width_height(item_w, item_h, size_mode);
+	el->render(pos_x, pos_y, final_ctx, fmt_ctx, false);
 }
