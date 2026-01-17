@@ -304,6 +304,8 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 	case _border_bottom_color_:
 	case _border_left_color_:
 	case _border_right_color_:
+	case _accent_color_:
+	case _caret_color_:
 		if (parse_color(val, *clr, container))
 			add_parsed_property(name, property_value(*clr, important));
 		break;

@@ -16,6 +16,11 @@ namespace litehtml
 		bool m_disabled;
 		bool m_readonly;
 
+		// Range input specific
+		float m_range_min = 0.0f;
+		float m_range_max = 100.0f;
+		float m_range_value = 50.0f;
+
 	public:
 		el_input(const document::ptr& doc);
 
@@ -35,6 +40,12 @@ namespace litehtml
 		bool is_checked() const { return m_checked; }
 		void set_checked(bool checked);
 		bool is_disabled() const { return m_disabled; }
+
+		// Range input methods
+		float get_range_min() const { return m_range_min; }
+		float get_range_max() const { return m_range_max; }
+		float get_range_value() const { return m_range_value; }
+		void set_range_value(float val);
 
 	private:
 		form_control_type parse_input_type(const char* type_str);

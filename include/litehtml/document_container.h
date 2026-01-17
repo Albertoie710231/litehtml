@@ -56,6 +56,20 @@ namespace litehtml
 		web_color background_color;
 		web_color border_color;
 		web_color placeholder_color;  // For placeholder text (fallback: text_color with reduced alpha)
+		web_color accent_color;       // For checkmarks, radio dots, sliders, etc.
+
+		// Range slider specific (for input[type="range"])
+		web_color track_color;        // ::slider-runnable-track background
+		web_color thumb_color;        // ::slider-thumb background
+		pixel_t track_height = 4;     // ::slider-runnable-track height
+		pixel_t thumb_size = 16;      // ::slider-thumb width/height
+		float range_value = 0.5f;     // Slider position (0.0 to 1.0)
+		float range_min = 0.0f;
+		float range_max = 100.0f;
+
+		// Select dropdown specific
+		web_color arrow_color;        // Dropdown arrow color
+		pixel_t arrow_size = 0;       // Arrow size (0 = auto based on font size)
 
 		pixel_t border_width = 1;
 		pixel_t padding_left = 4;
@@ -67,11 +81,18 @@ namespace litehtml
 
 		uint_ptr font = 0;  // Font handle for text rendering
 
+		// Appearance mode - when false, use CSS-only rendering (appearance: none)
+		bool use_native_appearance = true;
+
 		form_control_state() :
 			text_color(0x33, 0x33, 0x33),          // #333333
 			background_color(0xFF, 0xFF, 0xFF),    // #FFFFFF
 			border_color(0xAA, 0xAA, 0xAA),        // #AAAAAA
-			placeholder_color(0x88, 0x88, 0x88)    // #888888
+			placeholder_color(0x88, 0x88, 0x88),   // #888888
+			accent_color(0x00, 0x66, 0xCC),        // #0066CC (blue)
+			track_color(0xDD, 0xDD, 0xDD),         // #DDDDDD (light gray)
+			thumb_color(0x00, 0x66, 0xCC),         // #0066CC (blue, matches accent)
+			arrow_color(0x33, 0x33, 0x33)          // #333333 (same as text)
 		{}
 	};
 
@@ -84,6 +105,11 @@ namespace litehtml
 		position		pos;
 		int				index;
 		uint_ptr		font;
+
+		// CSS properties for marker rendering
+		pixel_t			font_size = 14;
+		pixel_t			line_height = 16;
+		pixel_t			marker_size = 0;    // Size for disc/circle/square (0 = auto from font)
 	};
 
 	enum mouse_event
@@ -120,13 +146,22 @@ namespace litehtml
 			}
 			draw_text(hdc, text, hFont, color, pos);
 		}
-		virtual pixel_t				pt_to_px(float pt) const = 0;
-		virtual pixel_t				get_default_font_size() const = 0;
-		virtual const char*			get_default_font_name() const = 0;
+		virtual pixel_t				pt_to_px(float pt) const { return static_cast<pixel_t>(pt * 96.0f / 72.0f); }
+		virtual pixel_t				get_default_font_size() const { return 16; }
+		virtual const char*			get_default_font_name() const { return "sans-serif"; }
 		virtual void				draw_list_marker(litehtml::uint_ptr hdc, const litehtml::list_marker& marker) = 0;
 		virtual void				load_image(const char* src, const char* baseurl, bool redraw_on_ready) = 0;
 		virtual void				get_image_size(const char* src, const char* baseurl, litehtml::size& sz) = 0;
+		// Get the placeholder size for a missing/failed image
+		// Default returns 0x0 (no placeholder), override to show a placeholder box
+		virtual void				get_image_placeholder_size(const char* /*src*/, const char* /*baseurl*/, litehtml::size& sz)
+		{
+			sz.width = 0;
+			sz.height = 0;
+		}
 		virtual void				draw_image(litehtml::uint_ptr hdc, const background_layer& layer, const std::string& url, const std::string& base_url) = 0;
+		// Draw placeholder for a missing/failed image. Default does nothing.
+		virtual void				draw_image_placeholder(litehtml::uint_ptr /*hdc*/, const litehtml::position& /*pos*/, const char* /*src*/, const char* /*baseurl*/) {}
 		virtual void				draw_solid_fill(litehtml::uint_ptr hdc, const background_layer& layer, const web_color& color) = 0;
 		virtual void				draw_linear_gradient(litehtml::uint_ptr hdc, const background_layer& layer, const background_layer::linear_gradient& gradient) = 0;
 		virtual void				draw_radial_gradient(litehtml::uint_ptr hdc, const background_layer& layer, const background_layer::radial_gradient& gradient) = 0;
@@ -159,8 +194,24 @@ namespace litehtml
 														const litehtml::string_map& attributes,
 														const std::shared_ptr<litehtml::document>& doc) = 0;
 
-		virtual void				get_media_features(litehtml::media_features& media) const = 0;
-		virtual void				get_language(litehtml::string& language, litehtml::string& culture) const = 0;
+		virtual void				get_media_features(litehtml::media_features& media) const
+		{
+			// Default media features for a typical desktop browser
+			media.type = litehtml::media_type_screen;
+			media.width = 1024;
+			media.height = 768;
+			media.device_width = 1920;
+			media.device_height = 1080;
+			media.color = 8;
+			media.color_index = 0;
+			media.monochrome = 0;
+			media.resolution = 96;
+		}
+		virtual void				get_language(litehtml::string& language, litehtml::string& culture) const
+		{
+			language = "en";
+			culture = "en-US";
+		}
 		virtual litehtml::string	resolve_color(const litehtml::string& /*color*/) const { return litehtml::string(); }
 		virtual void				split_text(const char* text, const std::function<void(const char*)>& on_word, const std::function<void(const char*)>& on_space);
 

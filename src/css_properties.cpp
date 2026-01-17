@@ -14,6 +14,8 @@
 void litehtml::css_properties::compute(const html_tag* el, const document::ptr& doc)
 {
 	m_color = el->get_property<web_color>(_color_, true, web_color::black, offset(m_color));
+	m_accent_color = el->get_property<web_color>(_accent_color_, true, web_color(0x00, 0x66, 0xCC), offset(m_accent_color));  // Default blue accent
+	m_caret_color = el->get_property<web_color>(_caret_color_, true, web_color::current_color, offset(m_caret_color));
 
 	m_el_position	 = (element_position)	el->get_property<int>( _position_,		false,	element_position_static,	 offset(m_el_position));
 	m_display		 = (style_display)		el->get_property<int>( _display_,			false,	display_inline,			 offset(m_display));

@@ -55,6 +55,27 @@ void el_input::parse_attributes()
 	m_disabled = get_attr("disabled") != nullptr;
 	m_readonly = get_attr("readonly") != nullptr;
 
+	// Range input specific attributes
+	if (m_type == form_control_input_range)
+	{
+		const char* min_attr = get_attr("min");
+		const char* max_attr = get_attr("max");
+		const char* val_attr = get_attr("value");
+
+		m_range_min = min_attr ? static_cast<float>(atof(min_attr)) : 0.0f;
+		m_range_max = max_attr ? static_cast<float>(atof(max_attr)) : 100.0f;
+
+		if (val_attr) {
+			m_range_value = static_cast<float>(atof(val_attr));
+		} else {
+			// Default to middle of range
+			m_range_value = (m_range_min + m_range_max) / 2.0f;
+		}
+		// Clamp to range
+		if (m_range_value < m_range_min) m_range_value = m_range_min;
+		if (m_range_value > m_range_max) m_range_value = m_range_max;
+	}
+
 	// Handle size attribute for text inputs
 	const char* size_attr = get_attr("size");
 	if (size_attr)
@@ -145,8 +166,9 @@ void el_input::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, co
 	if (pos.does_intersect(clip))
 	{
 		form_control_state state;
-		state.focused = false; // TODO: track focus state
-		state.hovered = false; // TODO: track hover state
+		// Track focus/hover via pseudo-classes
+		state.focused = has_pseudo_class(_focus_);
+		state.hovered = has_pseudo_class(_hover_);
 		state.checked = m_checked;
 		state.disabled = m_disabled;
 		state.readonly = m_readonly;
@@ -157,6 +179,10 @@ void el_input::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, co
 		const auto& c = css();
 		state.text_color = c.get_color();
 		state.background_color = c.get_bg().m_color;
+		state.accent_color = c.get_accent_color();
+
+		// Check appearance property - if none, don't use native rendering
+		state.use_native_appearance = (c.get_appearance() != appearance_none);
 
 		// Use left border as the reference for border properties
 		const auto& borders = c.get_borders();
@@ -182,6 +208,19 @@ void el_input::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, co
 		state.placeholder_color = state.text_color;
 		state.placeholder_color.alpha = 128;  // 50% opacity
 
+		// Range slider properties
+		if (m_type == form_control_input_range)
+		{
+			state.range_min = m_range_min;
+			state.range_max = m_range_max;
+			state.range_value = (m_range_max > m_range_min)
+				? (m_range_value - m_range_min) / (m_range_max - m_range_min)
+				: 0.5f;
+			// Use accent_color for thumb, and a track color from background
+			state.thumb_color = state.accent_color;
+			state.track_color = state.border_color;  // Use border color for track
+		}
+
 		get_document()->container()->draw_form_control(hdc, m_type, pos, state);
 	}
 }
@@ -195,6 +234,15 @@ void el_input::set_value(const string& val)
 void el_input::set_checked(bool checked)
 {
 	m_checked = checked;
+	get_document()->container()->on_form_control_change(shared_from_this());
+}
+
+void el_input::set_range_value(float val)
+{
+	// Clamp to range
+	if (val < m_range_min) val = m_range_min;
+	if (val > m_range_max) val = m_range_max;
+	m_range_value = val;
 	get_document()->container()->on_form_control_change(shared_from_this());
 }
 

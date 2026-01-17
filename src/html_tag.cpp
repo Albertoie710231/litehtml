@@ -700,6 +700,55 @@ int html_tag::select_pseudoclass(const css_attribute_selector& sel)
 			return select_no_match;
 		}
 		break;
+	// Form control state pseudo-classes
+	case _disabled_:
+		if (get_attr("disabled") == nullptr)
+		{
+			return select_no_match;
+		}
+		break;
+	case _enabled_:
+		if (get_attr("disabled") != nullptr)
+		{
+			return select_no_match;
+		}
+		break;
+	case _checked_:
+		if (get_attr("checked") == nullptr)
+		{
+			return select_no_match;
+		}
+		break;
+	case _read_only_:
+		if (get_attr("readonly") == nullptr && get_attr("disabled") == nullptr)
+		{
+			return select_no_match;
+		}
+		break;
+	case _read_write_:
+		if (get_attr("readonly") != nullptr || get_attr("disabled") != nullptr)
+		{
+			return select_no_match;
+		}
+		break;
+	case _placeholder_shown_:
+		{
+			const char* val = get_attr("value");
+			const char* placeholder = get_attr("placeholder");
+			// :placeholder-shown matches when value is empty and placeholder exists
+			if (placeholder == nullptr || (val != nullptr && val[0] != '\0'))
+			{
+				return select_no_match;
+			}
+		}
+		break;
+	case _focus_:
+		// :focus is tracked via pseudo-class set by the application
+		if (!(sel.name in m_pseudo_classes))
+		{
+			return select_no_match;
+		}
+		break;
 	default:
 		if (!(sel.name in m_pseudo_classes))
 		{
@@ -1185,6 +1234,11 @@ void litehtml::html_tag::draw_list_marker( uint_ptr hdc, const position& pos, co
 	lm.color        = css().get_color();
 	lm.marker_type  = css().get_list_style_type();
 	lm.font         = css().get_font();
+
+	// Set CSS properties for marker rendering
+	lm.font_size    = sz_font;
+	lm.line_height  = ln_height;
+	lm.marker_size  = sz_font / 3;  // Default marker size based on font
 
 	if (css().get_list_style_type() >= list_style_type_armenian)
 	{

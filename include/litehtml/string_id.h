@@ -161,6 +161,18 @@ STRING_ID(
 
 	_active_,
 	_hover_,
+	_focus_,
+	_disabled_,
+	_checked_,
+	_enabled_,
+	_read_only_,
+	_read_write_,
+	_placeholder_shown_,
+
+	// CSS pseudo-elements for form controls
+	_placeholder_,
+	_slider_thumb_,
+	_slider_runnable_track_,
 
 	// CSS property names
 	// Side properties must go in this order: top, right, bottom, left (clockwise starting from the top).
@@ -333,6 +345,8 @@ STRING_ID(
 	_opacity_,
 	_box_shadow_,
 	_filter_,
+	_accent_color_,
+	_caret_color_,
 
 	// CSS Transform
 	_transform_,

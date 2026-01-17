@@ -103,8 +103,9 @@ void el_select::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, c
 	if (pos.does_intersect(clip))
 	{
 		form_control_state state;
-		state.focused = false;
-		state.hovered = false;
+		// Track focus/hover via pseudo-classes
+		state.focused = has_pseudo_class(_focus_);
+		state.hovered = has_pseudo_class(_hover_);
 		state.disabled = m_disabled;
 		state.selected_index = m_selected_index;
 		state.value = get_value();
@@ -113,6 +114,10 @@ void el_select::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, c
 		const auto& c = css();
 		state.text_color = c.get_color();
 		state.background_color = c.get_bg().m_color;
+		state.accent_color = c.get_accent_color();
+
+		// Check appearance property - if none, don't use native rendering
+		state.use_native_appearance = (c.get_appearance() != appearance_none);
 
 		// Use left border as the reference for border properties
 		const auto& borders = c.get_borders();
@@ -133,6 +138,10 @@ void el_select::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip, c
 		if (state.line_height <= 0) {
 			state.line_height = c.get_font_metrics().height;
 		}
+
+		// Dropdown arrow color - default to text color
+		state.arrow_color = state.text_color;
+		state.arrow_size = c.get_font_size() / 2;  // Arrow size based on font
 
 		get_document()->container()->draw_form_control(hdc, form_control_select, pos, state);
 	}

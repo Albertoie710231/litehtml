@@ -137,6 +137,9 @@ namespace litehtml
 
 		float					m_opacity = 1.0f;
 		std::vector<box_shadow>	m_box_shadows;
+
+		web_color				m_accent_color;		// accent-color for form controls
+		web_color				m_caret_color;		// caret-color for text inputs
 		std::vector<text_shadow> m_text_shadows;
 		string					m_filter;  // CSS filter property string
 
@@ -315,6 +318,12 @@ namespace litehtml
 
 		web_color get_color() const;
 		void set_color(web_color color);
+
+		web_color get_accent_color() const;
+		void set_accent_color(web_color color);
+
+		web_color get_caret_color() const;
+		void set_caret_color(web_color color);
 
 		const string& get_cursor() const;
 		void set_cursor(const string& cursor);
@@ -718,6 +727,12 @@ namespace litehtml
 
 	inline web_color css_properties::get_color() const { return m_color; }
 	inline void css_properties::set_color(web_color color) { m_color = color; }
+
+	inline web_color css_properties::get_accent_color() const { return m_accent_color; }
+	inline void css_properties::set_accent_color(web_color color) { m_accent_color = color; }
+
+	inline web_color css_properties::get_caret_color() const { return m_caret_color; }
+	inline void css_properties::set_caret_color(web_color color) { m_caret_color = color; }
 
 	inline const string& css_properties::get_cursor() const { return m_cursor; }
 	inline void css_properties::set_cursor(const string& cursor) { m_cursor = cursor; }

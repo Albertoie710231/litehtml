@@ -94,8 +94,9 @@ void el_textarea::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip,
 	if (pos.does_intersect(clip))
 	{
 		form_control_state state;
-		state.focused = false;
-		state.hovered = false;
+		// Track focus/hover via pseudo-classes
+		state.focused = has_pseudo_class(_focus_);
+		state.hovered = has_pseudo_class(_hover_);
 		state.disabled = m_disabled;
 		state.readonly = m_readonly;
 		state.value = m_value;
@@ -105,6 +106,10 @@ void el_textarea::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position* clip,
 		const auto& c = css();
 		state.text_color = c.get_color();
 		state.background_color = c.get_bg().m_color;
+		state.accent_color = c.get_accent_color();
+
+		// Check appearance property - if none, don't use native rendering
+		state.use_native_appearance = (c.get_appearance() != appearance_none);
 
 		// Use left border as the reference for border properties
 		const auto& borders = c.get_borders();
