@@ -790,6 +790,25 @@ void style::add_property(string_id name, const css_token_vector& value, const st
 		add_parsed_property(name, property_value(str, important));
 		break;
 
+	//  =============================  TEXT SPACING  =============================
+
+	// letter-spacing = normal | <length>  https://developer.mozilla.org/en-US/docs/Web/CSS/letter-spacing
+	case _letter_spacing_:
+		return add_length_property(name, val, "normal", f_length, important);
+
+	// word-spacing = normal | <length>  https://developer.mozilla.org/en-US/docs/Web/CSS/word-spacing
+	case _word_spacing_:
+		return add_length_property(name, val, "normal", f_length, important);
+
+	// text-shadow = none | <shadow>#  https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow
+	// <shadow> = <length>{2,3} && <color>?
+	case _text_shadow_:
+		if (ident == "none")
+			add_parsed_property(name, property_value(string("none"), important));
+		else
+			add_parsed_property(name, property_value(get_repr(value, 0, -1, true), important));
+		break;
+
 	//  =============================  CUSTOM PROPERTY  =============================
 
 	// https://drafts.csswg.org/css-variables-2/#defining-variables

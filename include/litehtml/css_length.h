@@ -3,9 +3,13 @@
 
 #include "types.h"
 #include "css_tokenizer.h"
+#include <memory>
 
 namespace litehtml
 {
+	// Forward declaration
+	class css_calc_expression;
+
 	// from_token options (flags)
 	enum {
 		f_length     = 1, // <length> (includes unitless zero)
@@ -27,6 +31,7 @@ namespace litehtml
 		};
 		css_units	m_units;
 		bool		m_is_predefined;
+		std::shared_ptr<css_calc_expression> m_calc;  // For calc()/min()/max()/clamp() expressions
 	public:
 		css_length();
 		css_length(float val, css_units units = css_units_px);
@@ -42,6 +47,12 @@ namespace litehtml
 		pixel_t		calc_percent(pixel_t width) const;
 		bool		from_token(const css_token& token, int options, const string& predefined_keywords = "");
 		string		to_string() const;
+
+		// Calc expression support
+		bool		is_calc() const;
+		void		set_calc(const std::shared_ptr<css_calc_expression>& calc);
+		const std::shared_ptr<css_calc_expression>& get_calc() const;
+		bool		from_calc_token(const css_token& token);
 	};
 
 	using length_vector = vector<css_length>;
@@ -54,6 +65,7 @@ namespace litehtml
 		m_predef		= 0;
 		m_units			= css_units_none;
 		m_is_predefined	= false;
+		m_calc			= nullptr;
 	}
 
 	inline css_length::css_length(float val, css_units units)
@@ -125,6 +137,27 @@ namespace litehtml
 			}
 		}
 		return 0;
+	}
+
+	inline bool css_length::is_calc() const
+	{
+		return m_calc != nullptr;
+	}
+
+	inline void css_length::set_calc(const std::shared_ptr<css_calc_expression>& calc)
+	{
+		m_calc = calc;
+		if (calc)
+		{
+			m_is_predefined = false;
+			m_value = 0;
+			m_units = css_units_none;
+		}
+	}
+
+	inline const std::shared_ptr<css_calc_expression>& css_length::get_calc() const
+	{
+		return m_calc;
 	}
 }
 

@@ -3,6 +3,7 @@
 #include "stylesheet.h"
 #include "layout_profiler.h"
 #include "layout_cache.h"
+#include "css_calc.h"
 #include "html_tag.h"
 #include "el_text.h"
 #include "el_para.h"
@@ -24,6 +25,10 @@
 #include "el_div.h"
 #include "el_font.h"
 #include "el_tr.h"
+#include "el_input.h"
+#include "el_textarea.h"
+#include "el_select.h"
+#include "el_button.h"
 #include "gumbo.h"
 #include "render_item.h"
 #include "render_table.h"
@@ -37,6 +42,14 @@ namespace litehtml
 document::document(document_container* container)
 {
 	m_container	= container;
+
+	// Set up animation frame callback
+	m_animation_controller.set_frame_callback([this]() {
+		if (m_container)
+		{
+			m_container->on_animation_frame_requested();
+		}
+	});
 }
 
 document::~document()
@@ -492,6 +505,22 @@ element::ptr document::create_element(const char* tag_name, const string_map& at
 		{
 			newTag = std::make_shared<el_font>(this_doc);
 		}
+		else if (!strcmp(tag_name, "input"))
+		{
+			newTag = std::make_shared<el_input>(this_doc);
+		}
+		else if (!strcmp(tag_name, "textarea"))
+		{
+			newTag = std::make_shared<el_textarea>(this_doc);
+		}
+		else if (!strcmp(tag_name, "select"))
+		{
+			newTag = std::make_shared<el_select>(this_doc);
+		}
+		else if (!strcmp(tag_name, "button"))
+		{
+			newTag = std::make_shared<el_button>(this_doc);
+		}
 		else
 		{
 			newTag = std::make_shared<html_tag>(this_doc);
@@ -643,6 +672,13 @@ pixel_t document::to_pixels( const css_length& val, const font_metrics& metrics,
 	{
 		return 0;
 	}
+
+	// Handle calc() expressions
+	if(val.is_calc() && val.get_calc())
+	{
+		return val.get_calc()->evaluate(metrics, size, std::const_pointer_cast<document>(shared_from_this()));
+	}
+
 	pixel_t ret;
 	switch(val.units())
 	{
@@ -701,6 +737,12 @@ pixel_t document::to_pixels( const css_length& val, const font_metrics& metrics,
 void document::cvt_units( css_length& val, const font_metrics& metrics, pixel_t size ) const
 {
 	if(val.is_predefined())
+	{
+		return;
+	}
+	// Don't convert calc expressions - they need to be evaluated at layout time
+	// because they may contain percentage values
+	if(val.is_calc())
 	{
 		return;
 	}
@@ -952,6 +994,20 @@ const keyframes_rule* document::get_keyframes(const string& name) const
 	if (it != m_keyframes.end())
 		return &it->second;
 	return nullptr;
+}
+
+bool document::advance_animations(double current_time_ms)
+{
+	bool any_active = m_animation_controller.advance(current_time_ms);
+
+	// If there are active animations, request a re-render
+	if (any_active && m_root && m_root_render)
+	{
+		// Recompute styles for elements with active animations
+		// (simplified - in production would only update affected elements)
+	}
+
+	return any_active;
 }
 
 void document::fix_tables_layout()

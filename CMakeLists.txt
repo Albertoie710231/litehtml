@@ -20,6 +20,9 @@ endif()
 set(SOURCE_LITEHTML
 	src/codepoint.cpp
 	src/css_length.cpp
+	src/css_calc.cpp
+	src/css_interpolation.cpp
+	src/animation_state.cpp
 	src/css_selector.cpp
 	src/css_tokenizer.cpp
 	src/css_parser.cpp
@@ -48,6 +51,10 @@ set(SOURCE_LITEHTML
 	src/el_text.cpp
 	src/el_title.cpp
 	src/el_tr.cpp
+	src/el_input.cpp
+	src/el_textarea.cpp
+	src/el_select.cpp
+	src/el_button.cpp
 	src/encodings.cpp
 	src/html.cpp
 	src/html_tag.cpp
@@ -90,6 +97,9 @@ set(HEADER_LITEHTML
 	include/litehtml/borders.h
 	include/litehtml/codepoint.h
 	include/litehtml/css_length.h
+	include/litehtml/css_calc.h
+	include/litehtml/css_interpolation.h
+	include/litehtml/animation_state.h
 	include/litehtml/css_margins.h
 	include/litehtml/css_offsets.h
 	include/litehtml/css_position.h
@@ -120,6 +130,10 @@ set(HEADER_LITEHTML
 	include/litehtml/el_text.h
 	include/litehtml/el_title.h
 	include/litehtml/el_tr.h
+	include/litehtml/el_input.h
+	include/litehtml/el_textarea.h
+	include/litehtml/el_select.h
+	include/litehtml/el_button.h
 	include/litehtml/element.h
 	include/litehtml/encodings.h
 	include/litehtml/html.h

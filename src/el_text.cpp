@@ -34,6 +34,10 @@ void litehtml::el_text::compute_styles(bool /*recursive*/, bool /*use_cache*/)
 		css_w().set_font_metrics(el_parent->css().get_font_metrics());
 		css_w().set_white_space(el_parent->css().get_white_space());
 		css_w().set_text_transform(el_parent->css().get_text_transform());
+		// Inherit text spacing and shadows from parent
+		css_w().set_letter_spacing(el_parent->css().get_letter_spacing());
+		css_w().set_word_spacing(el_parent->css().get_word_spacing());
+		css_w().set_text_shadows(el_parent->css().get_text_shadows());
 	}
 	css_w().set_display(display_inline_text);
 	css_w().set_float(float_none);
@@ -97,7 +101,31 @@ void litehtml::el_text::compute_styles(bool /*recursive*/, bool /*use_cache*/)
 	} else
 	{
 		m_size.height	= fm.height;
-		m_size.width	= get_document()->container()->text_width(m_use_transformed ? m_transformed_text.c_str() : m_text.c_str(), font);
+		const char* text_to_measure = m_use_transformed ? m_transformed_text.c_str() : m_text.c_str();
+		m_size.width	= get_document()->container()->text_width(text_to_measure, font);
+
+		// Apply letter-spacing: adds extra space between each character
+		const css_length& letter_sp = css().get_letter_spacing();
+		if (!letter_sp.is_predefined() && letter_sp.val() != 0)
+		{
+			// Count characters (UTF-8 aware would be better, but simplified for now)
+			size_t char_count = strlen(text_to_measure);
+			if (char_count > 1)
+			{
+				m_size.width += (pixel_t)(letter_sp.val() * (char_count - 1));
+			}
+		}
+
+		// Apply word-spacing: adds extra space for whitespace characters
+		const css_length& word_sp = css().get_word_spacing();
+		if (!word_sp.is_predefined() && word_sp.val() != 0)
+		{
+			// If this is a space, add word spacing
+			if (is_white_space())
+			{
+				m_size.width += (pixel_t)word_sp.val();
+			}
+		}
 	}
 	m_draw_spaces = fm.draw_spaces;
 }
@@ -125,8 +153,27 @@ void litehtml::el_text::draw(uint_ptr hdc, pixel_t x, pixel_t y, const position 
 			if(font)
 			{
 				web_color color = el_parent->css().get_color();
-				doc->container()->draw_text(hdc, m_use_transformed ? m_transformed_text.c_str() : m_text.c_str(), font,
-											color, pos);
+				const char* text = m_use_transformed ? m_transformed_text.c_str() : m_text.c_str();
+
+				// Get text shadows and spacing from CSS
+				const auto& shadows = css().get_text_shadows();
+				const css_length& letter_sp = css().get_letter_spacing();
+				const css_length& word_sp = css().get_word_spacing();
+
+				pixel_t letter_spacing = letter_sp.is_predefined() ? 0 : (pixel_t)letter_sp.val();
+				pixel_t word_spacing = word_sp.is_predefined() ? 0 : (pixel_t)word_sp.val();
+
+				if (!shadows.empty() || letter_spacing != 0 || word_spacing != 0)
+				{
+					// Use the extended draw method with shadows and spacing
+					doc->container()->draw_text_with_shadows(hdc, text, font, color, pos,
+					                                         shadows, letter_spacing, word_spacing);
+				}
+				else
+				{
+					// Use simple draw_text
+					doc->container()->draw_text(hdc, text, font, color, pos);
+				}
 			}
 		}
 	}

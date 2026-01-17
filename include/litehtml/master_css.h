@@ -338,9 +338,21 @@ input, textarea, keygen, select, button, isindex {
 	text-indent: 0;
 	text-shadow: none;
 	display: inline-block;
+	vertical-align: baseline;
+	box-sizing: border-box;
 }
 input[type="hidden"] {
 	display: none;
+}
+input[type="checkbox"], input[type="radio"] {
+	vertical-align: middle;
+}
+button, input[type="submit"], input[type="reset"], input[type="button"] {
+	text-align: center;
+}
+textarea {
+	white-space: pre-wrap;
+	overflow: auto;
 }
 
 

@@ -8,6 +8,7 @@
 #include "font_description.h"
 #include "selector_filter.h"
 #include "style_cache.h"
+#include "animation_state.h"
 
 typedef struct GumboInternalOutput GumboOutput;
 
@@ -77,6 +78,7 @@ namespace litehtml
 		pixel_t								m_scroll_x = 0;     // Scroll position for sticky elements
 		pixel_t								m_scroll_y = 0;
 		keyframes_map						m_keyframes;        // CSS @keyframes rules
+		animation_controller				m_animation_controller; // Animation/transition manager
 	public:
 		document(document_container* objContainer);
 		virtual ~document();
@@ -123,6 +125,17 @@ namespace litehtml
 		// CSS @keyframes rules
 		void							add_keyframes(const keyframes_rule& rule);
 		const keyframes_rule*			get_keyframes(const string& name) const;
+
+		// Animation controller access
+		animation_controller&			get_animation_controller() { return m_animation_controller; }
+		const animation_controller&		get_animation_controller() const { return m_animation_controller; }
+
+		// Advance all animations and transitions
+		// Returns true if any animation is still active
+		bool							advance_animations(double current_time_ms);
+
+		// Check if there are any active animations
+		bool							has_active_animations() const { return m_animation_controller.has_active_animations(); }
 
 		void							append_children_from_string(element& parent, const char* str);
 		void							dump(dumper& cout);

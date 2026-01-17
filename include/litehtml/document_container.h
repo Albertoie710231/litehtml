@@ -15,6 +15,43 @@
 namespace litehtml
 {
 	struct box_shadow;  // Forward declaration
+	struct text_shadow; // Forward declaration
+
+	// Form control types
+	enum form_control_type
+	{
+		form_control_input_text,
+		form_control_input_password,
+		form_control_input_checkbox,
+		form_control_input_radio,
+		form_control_input_submit,
+		form_control_input_reset,
+		form_control_input_button,
+		form_control_input_hidden,
+		form_control_input_file,
+		form_control_input_number,
+		form_control_input_range,
+		form_control_input_color,
+		form_control_input_date,
+		form_control_textarea,
+		form_control_select,
+		form_control_button
+	};
+
+	// Form control state for rendering
+	struct form_control_state
+	{
+		bool focused = false;
+		bool hovered = false;
+		bool checked = false;
+		bool disabled = false;
+		bool readonly = false;
+		string value;
+		string placeholder;
+		int selected_index = -1;
+
+		form_control_state() = default;
+	};
 
 	struct list_marker
 	{
@@ -41,6 +78,26 @@ namespace litehtml
 		virtual void				delete_font(litehtml::uint_ptr hFont) = 0;
 		virtual pixel_t				text_width(const char* text, litehtml::uint_ptr hFont) = 0;
 		virtual void				draw_text(litehtml::uint_ptr hdc, const char* text, litehtml::uint_ptr hFont, litehtml::web_color color, const litehtml::position& pos) = 0;
+		// Draw text with shadows - default implementation just calls draw_text
+		// letter_spacing and word_spacing are provided for implementations that need them
+		virtual void				draw_text_with_shadows(litehtml::uint_ptr hdc, const char* text, litehtml::uint_ptr hFont,
+		                                                   litehtml::web_color color, const litehtml::position& pos,
+		                                                   const std::vector<text_shadow>& shadows, pixel_t letter_spacing = 0, pixel_t word_spacing = 0)
+		{
+			// Suppress unused parameter warnings for default implementation
+			(void)letter_spacing;
+			(void)word_spacing;
+			// Default implementation draws shadows then text
+			for (const auto& shadow : shadows)
+			{
+				litehtml::position shadow_pos = pos;
+				shadow_pos.x += shadow.offset_x;
+				shadow_pos.y += shadow.offset_y;
+				// Note: blur_radius would require platform-specific implementation
+				draw_text(hdc, text, hFont, shadow.color, shadow_pos);
+			}
+			draw_text(hdc, text, hFont, color, pos);
+		}
 		virtual pixel_t				pt_to_px(float pt) const = 0;
 		virtual pixel_t				get_default_font_size() const = 0;
 		virtual const char*			get_default_font_name() const = 0;
@@ -89,6 +146,75 @@ namespace litehtml
 		// Return true to continue layout, false to abort (not recommended mid-layout).
 		// Default implementation just continues.
 		virtual bool				on_layout_progress() { return true; }
+
+		// Form control rendering and interaction
+		// Draw a form control. Default implementation draws nothing.
+		virtual void				draw_form_control(litehtml::uint_ptr /*hdc*/, form_control_type /*type*/,
+		                                              const litehtml::position& /*pos*/, const form_control_state& /*state*/) {}
+
+		// Get the intrinsic size of a form control. Default returns a reasonable size.
+		virtual void				get_form_control_size(form_control_type type, litehtml::size& sz)
+		{
+			// Default sizes for form controls
+			switch (type)
+			{
+			case form_control_input_text:
+			case form_control_input_password:
+			case form_control_input_number:
+			case form_control_input_date:
+				sz.width = 150;
+				sz.height = 20;
+				break;
+			case form_control_input_checkbox:
+			case form_control_input_radio:
+				sz.width = 16;
+				sz.height = 16;
+				break;
+			case form_control_input_submit:
+			case form_control_input_reset:
+			case form_control_input_button:
+			case form_control_button:
+				sz.width = 80;
+				sz.height = 24;
+				break;
+			case form_control_input_range:
+				sz.width = 150;
+				sz.height = 20;
+				break;
+			case form_control_input_color:
+				sz.width = 40;
+				sz.height = 24;
+				break;
+			case form_control_textarea:
+				sz.width = 200;
+				sz.height = 100;
+				break;
+			case form_control_select:
+				sz.width = 150;
+				sz.height = 24;
+				break;
+			default:
+				sz.width = 100;
+				sz.height = 20;
+				break;
+			}
+		}
+
+		// Called when a form is submitted. Default implementation does nothing.
+		virtual void				on_form_submit(const litehtml::element::ptr& /*form*/, const litehtml::element::ptr& /*submitter*/) {}
+
+		// Called when a form control's value changes. Default implementation does nothing.
+		virtual void				on_form_control_change(const litehtml::element::ptr& /*control*/) {}
+
+		// Animation support
+		// Called when an animation frame is needed (element has active animations/transitions)
+		// The application should call document::advance_animations() with the current time
+		// Default implementation does nothing
+		virtual void				on_animation_frame_requested() {}
+
+		// Get current time in milliseconds (for animation timing)
+		// Default implementation returns 0; implementations should return actual time
+		virtual double				get_current_time_ms() const { return 0; }
 
 	protected:
 		virtual ~document_container() = default;

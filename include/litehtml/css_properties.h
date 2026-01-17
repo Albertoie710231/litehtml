@@ -30,6 +30,19 @@ namespace litehtml
 			: offset_x(ox), offset_y(oy), blur_radius(blur), spread_radius(spread), color(c), inset(is_inset) {}
 	};
 
+	// Text shadow structure (similar to box_shadow but without spread/inset)
+	struct text_shadow
+	{
+		pixel_t offset_x = 0;
+		pixel_t offset_y = 0;
+		pixel_t blur_radius = 0;
+		web_color color;
+
+		text_shadow() = default;
+		text_shadow(pixel_t ox, pixel_t oy, pixel_t blur, const web_color& c)
+			: offset_x(ox), offset_y(oy), blur_radius(blur), color(c) {}
+	};
+
 	template<class CssT, class CompT>
 	class css_property
 	{
@@ -124,7 +137,12 @@ namespace litehtml
 
 		float					m_opacity = 1.0f;
 		std::vector<box_shadow>	m_box_shadows;
+		std::vector<text_shadow> m_text_shadows;
 		string					m_filter;  // CSS filter property string
+
+		// Text spacing
+		css_length				m_letter_spacing;
+		css_length				m_word_spacing;
 
 		// CSS Transform
 		string					m_transform_str;
@@ -345,6 +363,15 @@ namespace litehtml
 
 		const std::vector<box_shadow>& get_box_shadows() const;
 		void set_box_shadows(const std::vector<box_shadow>& shadows);
+
+		const std::vector<text_shadow>& get_text_shadows() const;
+		void set_text_shadows(const std::vector<text_shadow>& shadows);
+
+		const css_length& get_letter_spacing() const;
+		void set_letter_spacing(const css_length& spacing);
+
+		const css_length& get_word_spacing() const;
+		void set_word_spacing(const css_length& spacing);
 
 		const string& get_filter() const;
 		void set_filter(const string& filter);
@@ -851,6 +878,36 @@ namespace litehtml
 	inline void css_properties::set_box_shadows(const std::vector<box_shadow>& shadows)
 	{
 		m_box_shadows = shadows;
+	}
+
+	inline const std::vector<text_shadow>& css_properties::get_text_shadows() const
+	{
+		return m_text_shadows;
+	}
+
+	inline void css_properties::set_text_shadows(const std::vector<text_shadow>& shadows)
+	{
+		m_text_shadows = shadows;
+	}
+
+	inline const css_length& css_properties::get_letter_spacing() const
+	{
+		return m_letter_spacing;
+	}
+
+	inline void css_properties::set_letter_spacing(const css_length& spacing)
+	{
+		m_letter_spacing = spacing;
+	}
+
+	inline const css_length& css_properties::get_word_spacing() const
+	{
+		return m_word_spacing;
+	}
+
+	inline void css_properties::set_word_spacing(const css_length& spacing)
+	{
+		m_word_spacing = spacing;
 	}
 
 	inline const string& css_properties::get_filter() const

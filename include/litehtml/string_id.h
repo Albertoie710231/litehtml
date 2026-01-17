@@ -263,6 +263,10 @@ STRING_ID(
 	_text_emphasis_color_,
 	_text_emphasis_position_,
 
+	_letter_spacing_,
+	_word_spacing_,
+	_text_shadow_,
+
 	_white_space_,
 	_text_align_,
 	_vertical_align_,

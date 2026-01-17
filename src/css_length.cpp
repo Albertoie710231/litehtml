@@ -1,5 +1,6 @@
 #include "html.h"
 #include "css_length.h"
+#include "css_calc.h"
 
 namespace litehtml
 {
@@ -15,6 +16,7 @@ bool css_length::from_token(const css_token& token, int options, const string& k
 		if (idx == -1) return false;
 		m_predef = idx;
 		m_is_predefined = true;
+		m_calc = nullptr;
 		return true;
 	}
 	else if (token.type == DIMENSION)
@@ -25,10 +27,11 @@ bool css_length::from_token(const css_token& token, int options, const string& k
 		// note: 1none and 1\% are invalid
 		if (idx == -1 || idx == css_units_none || idx == css_units_percentage)
 			return false;
-		
+
 		m_value = token.n.number;
 		m_units = (css_units)idx;
 		m_is_predefined = false;
+		m_calc = nullptr;
 		return true;
 	}
 	else if (token.type == PERCENTAGE)
@@ -38,6 +41,7 @@ bool css_length::from_token(const css_token& token, int options, const string& k
 		m_value = token.n.number;
 		m_units = css_units_percentage;
 		m_is_predefined = false;
+		m_calc = nullptr;
 		return true;
 	}
 	else if (token.type == NUMBER)
@@ -50,17 +54,47 @@ bool css_length::from_token(const css_token& token, int options, const string& k
 			return false;
 		if ((options & f_integer) && token.n.number_type != css_number_integer)
 			return false;
-		
+
 		m_value = token.n.number;
 		m_units = css_units_none;
 		m_is_predefined = false;
+		m_calc = nullptr;
 		return true;
+	}
+	else if (token.type == CV_FUNCTION)
+	{
+		// Check for calc(), min(), max(), clamp()
+		return from_calc_token(token);
 	}
 	return false;
 }
 
+bool css_length::from_calc_token(const css_token& token)
+{
+	if (token.type != CV_FUNCTION)
+		return false;
+
+	string name = lowcase(token.name);
+	if (name != "calc" && name != "min" && name != "max" && name != "clamp")
+		return false;
+
+	auto calc = std::make_shared<css_calc_expression>();
+	if (!calc->parse(token))
+		return false;
+
+	m_calc = calc;
+	m_value = 0;
+	m_units = css_units_none;
+	m_is_predefined = false;
+	return true;
+}
+
 string css_length::to_string() const
 {
+	if(m_calc)
+	{
+		return m_calc->to_string();
+	}
 	if(m_is_predefined)
 	{
 		return "def(" + std::to_string(m_predef) + ")";

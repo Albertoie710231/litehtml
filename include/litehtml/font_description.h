@@ -21,6 +21,8 @@ namespace litehtml
 		std::string				emphasis_style;	// Text emphasis style
 		web_color				emphasis_color = web_color::current_color;	// Text emphasis color
 		int						emphasis_position = text_emphasis_position_over;	// Text emphasis position
+		pixel_t					letter_spacing = 0;	// Additional spacing between characters (0 = normal)
+		pixel_t					word_spacing = 0;	// Additional spacing between words (0 = normal)
 
 		std::string	hash() const
 		{
@@ -36,6 +38,8 @@ namespace litehtml
 			out += ":ephs=" + emphasis_style;
 			out += ":ephc=" + emphasis_color.to_string();
 			out += ":ephp=" + std::to_string(emphasis_position);
+			out += ":ls=" + std::to_string(letter_spacing);
+			out += ":ws=" + std::to_string(word_spacing);
 
 			return out;
 		}

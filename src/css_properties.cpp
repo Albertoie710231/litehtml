@@ -241,7 +241,7 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 	// TODO: Parse transform-origin string if provided
 
 	// Parse box-shadow
-	string box_shadow_str = el->get_property<string>(_box_shadow_, false, "", offset(m_box_shadows));
+	string box_shadow_str = el->get_property<string>(_box_shadow_, false, "", 0);
 	m_box_shadows.clear();
 	if (!box_shadow_str.empty() && box_shadow_str != "none")
 	{
@@ -359,7 +359,7 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 	// Parse CSS Transitions
 	// transition: <property> <duration> [<timing-function>] [<delay>]
 	// Multiple transitions separated by commas
-	string transition_str = el->get_property<string>(_transition_, false, "", offset(m_transitions));
+	string transition_str = el->get_property<string>(_transition_, false, "", 0);
 	m_transitions.clear();
 	if (!transition_str.empty() && transition_str != "none")
 	{
@@ -447,7 +447,7 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 	// Parse CSS Animations
 	// animation: <name> <duration> [<timing-function>] [<delay>] [<iteration-count>] [<direction>] [<fill-mode>] [<play-state>]
 	// Multiple animations separated by commas
-	string animation_str = el->get_property<string>(_animation_, false, "", offset(m_animations));
+	string animation_str = el->get_property<string>(_animation_, false, "", 0);
 	m_animations.clear();
 	if (!animation_str.empty() && animation_str != "none")
 	{
@@ -565,6 +565,106 @@ void litehtml::css_properties::compute(const html_tag* el, const document::ptr& 
 
 	m_css_text_indent = el->get_property<css_length>(_text_indent_, true, 0, offset(m_css_text_indent));
 	doc->cvt_units(m_css_text_indent, m_font_metrics, 0);
+
+	// Letter spacing: normal (0) or <length>
+	m_letter_spacing = el->get_property<css_length>(_letter_spacing_, true, css_length::predef_value(0), offset(m_letter_spacing));
+	if (!m_letter_spacing.is_predefined())
+		doc->cvt_units(m_letter_spacing, m_font_metrics, 0);
+
+	// Word spacing: normal (0) or <length>
+	m_word_spacing = el->get_property<css_length>(_word_spacing_, true, css_length::predef_value(0), offset(m_word_spacing));
+	if (!m_word_spacing.is_predefined())
+		doc->cvt_units(m_word_spacing, m_font_metrics, 0);
+
+	// Text shadow parsing (not inherited - we parse the string ourselves)
+	string text_shadow_str = el->get_property<string>(_text_shadow_, false, "", 0);
+	m_text_shadows.clear();
+	if (!text_shadow_str.empty() && text_shadow_str != "none")
+	{
+		// Parse text-shadow: offset-x offset-y [blur-radius] [color], ...
+		size_t pos = 0;
+		while (pos < text_shadow_str.size())
+		{
+			// Find next comma or end
+			size_t comma = text_shadow_str.find(',', pos);
+			if (comma == string::npos) comma = text_shadow_str.size();
+
+			string shadow_part = text_shadow_str.substr(pos, comma - pos);
+
+			// Trim whitespace
+			size_t start = shadow_part.find_first_not_of(" \t");
+			size_t end = shadow_part.find_last_not_of(" \t");
+			if (start != string::npos && end != string::npos)
+			{
+				shadow_part = shadow_part.substr(start, end - start + 1);
+
+				text_shadow shadow;
+				std::vector<float> numbers;
+				web_color color(0, 0, 0, 255); // Default shadow color (black)
+
+				std::istringstream iss(shadow_part);
+				string token;
+				while (iss >> token)
+				{
+					// Try to parse as number with units
+					bool is_number = false;
+					float val = 0;
+					if (!token.empty())
+					{
+						char* endptr;
+						val = strtof(token.c_str(), &endptr);
+						if (endptr != token.c_str())
+						{
+							is_number = true;
+							numbers.push_back(val);
+						}
+					}
+
+					// If not a number, might be a color
+					if (!is_number && !token.empty())
+					{
+						if (token[0] == '#' && token.size() >= 4)
+						{
+							unsigned int r = 0, g = 0, b = 0, a = 255;
+							if (token.size() == 4) // #rgb
+							{
+								sscanf(token.c_str(), "#%1x%1x%1x", &r, &g, &b);
+								r *= 17; g *= 17; b *= 17;
+							}
+							else if (token.size() == 7) // #rrggbb
+							{
+								sscanf(token.c_str(), "#%2x%2x%2x", &r, &g, &b);
+							}
+							else if (token.size() == 9) // #rrggbbaa
+							{
+								sscanf(token.c_str(), "#%2x%2x%2x%2x", &r, &g, &b, &a);
+							}
+							color = web_color((byte)r, (byte)g, (byte)b, (byte)a);
+						}
+						else if (token == "black") color = web_color(0, 0, 0, 255);
+						else if (token == "white") color = web_color(255, 255, 255, 255);
+						else if (token == "red") color = web_color(255, 0, 0, 255);
+						else if (token == "green") color = web_color(0, 128, 0, 255);
+						else if (token == "blue") color = web_color(0, 0, 255, 255);
+						else if (token == "gray" || token == "grey") color = web_color(128, 128, 128, 255);
+						else if (token == "transparent") color = web_color(0, 0, 0, 0);
+					}
+				}
+
+				// Assign parsed values (minimum 2 numbers for offset-x offset-y)
+				if (numbers.size() >= 2)
+				{
+					shadow.offset_x = numbers[0];
+					shadow.offset_y = numbers[1];
+					if (numbers.size() >= 3) shadow.blur_radius = numbers[2];
+					shadow.color = color;
+					m_text_shadows.push_back(shadow);
+				}
+			}
+
+			pos = comma + 1;
+		}
+	}
 
 	m_line_height.css_value = el->get_property<css_length>(_line_height_, true, normal, offset(m_line_height.css_value));
 	if(m_line_height.css_value.is_predefined())
@@ -785,6 +885,9 @@ void litehtml::css_properties::compute_font(const html_tag* el, const document::
 	descr.emphasis_style		= m_text_emphasis_style;
 	descr.emphasis_color		= m_text_emphasis_color;
 	descr.emphasis_position		= m_text_emphasis_position;
+	// letter-spacing and word-spacing are set after compute() when we have all computed values
+	descr.letter_spacing		= 0;
+	descr.word_spacing			= 0;
 
 	m_font = doc->get_font(descr, &m_font_metrics);
 }
