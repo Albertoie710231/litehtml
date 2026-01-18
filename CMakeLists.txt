@@ -40,6 +40,7 @@ set(SOURCE_LITEHTML
 	src/element.cpp
 	src/el_font.cpp
 	src/el_image.cpp
+	src/el_canvas.cpp
 	src/el_svg.cpp
 	src/el_link.cpp
 	src/el_para.cpp

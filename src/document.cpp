@@ -28,6 +28,7 @@
 #include "el_input.h"
 #include "el_textarea.h"
 #include "el_select.h"
+#include "el_canvas.h"
 #include "el_button.h"
 #include "gumbo.h"
 #include "render_item.h"
@@ -492,6 +493,10 @@ element::ptr document::create_element(const char* tag_name, const string_map& at
 		else if (!strcmp(tag_name, "img"))
 		{
 			newTag = std::make_shared<el_image>(this_doc);
+		}
+		else if (!strcmp(tag_name, "canvas"))
+		{
+			newTag = std::make_shared<el_canvas>(this_doc);
 		}
 		else if (!strcmp(tag_name, "svg"))
 		{
