@@ -513,4 +513,251 @@ int element::select(const css_selector& /*selector*/, bool /*apply_pseudo*/)		LI
 int element::select(const css_element_selector& /*selector*/, bool /*apply_pseudo*/) LITEHTML_RETURN_FUNC(select_no_match)
 element::ptr element::find_ancestor(const css_selector& /*selector*/, bool /*apply_pseudo*/, bool* /*is_pseudo*/) LITEHTML_RETURN_FUNC(nullptr)
 
+// Node interface implementations (per WHATWG DOM spec)
+
+NodeType element::nodeType() const
+{
+	return ELEMENT_NODE;
+}
+
+string element::nodeName() const
+{
+	const char* tag = get_tagName();
+	if (tag) {
+		// Per DOM spec, element nodeName is uppercase tag name
+		string upper_tag = tag;
+		for (auto& c : upper_tag) c = std::toupper(c);
+		return upper_tag;
+	}
+	return "";
+}
+
+string element::nodeValue() const
+{
+	// Element nodes have null nodeValue per spec
+	return "";
+}
+
+void element::set_nodeValue(const string& /*val*/)
+{
+	// Setting nodeValue on Element has no effect per spec
+}
+
+element::ptr element::firstChild() const
+{
+	if (m_children.empty()) {
+		return nullptr;
+	}
+	return m_children.front();
+}
+
+element::ptr element::lastChild() const
+{
+	if (m_children.empty()) {
+		return nullptr;
+	}
+	return m_children.back();
+}
+
+element::ptr element::previousSibling() const
+{
+	auto par = parent();
+	if (!par) {
+		return nullptr;
+	}
+
+	const auto& siblings = par->children();
+	element::ptr prev = nullptr;
+	for (const auto& sibling : siblings) {
+		if (sibling.get() == this) {
+			return prev;
+		}
+		prev = sibling;
+	}
+	return nullptr;
+}
+
+element::ptr element::nextSibling() const
+{
+	auto par = parent();
+	if (!par) {
+		return nullptr;
+	}
+
+	const auto& siblings = par->children();
+	bool found = false;
+	for (const auto& sibling : siblings) {
+		if (found) {
+			return sibling;
+		}
+		if (sibling.get() == this) {
+			found = true;
+		}
+	}
+	return nullptr;
+}
+
+element::ptr element::cloneNode(bool /*deep*/) const
+{
+	// Base implementation returns nullptr - subclasses override
+	return nullptr;
+}
+
+bool element::containsNode(const element::ptr& other) const
+{
+	if (!other) {
+		return false;
+	}
+
+	// Check if this is the same node
+	if (other.get() == this) {
+		return true;
+	}
+
+	// Check all descendants
+	for (const auto& child : m_children) {
+		if (child == other || child->containsNode(other)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+unsigned short element::compareDocumentPosition(const element::ptr& other) const
+{
+	if (!other) {
+		return DOCUMENT_POSITION_DISCONNECTED;
+	}
+
+	// Same node
+	if (other.get() == this) {
+		return 0;
+	}
+
+	// Check if other contains this
+	if (other->containsNode(std::const_pointer_cast<element>(shared_from_this()))) {
+		return DOCUMENT_POSITION_CONTAINS | DOCUMENT_POSITION_PRECEDING;
+	}
+
+	// Check if this contains other
+	if (containsNode(other)) {
+		return DOCUMENT_POSITION_CONTAINED_BY | DOCUMENT_POSITION_FOLLOWING;
+	}
+
+	// Find common ancestor and determine order
+	// Collect ancestors of this
+	std::vector<element*> this_ancestors;
+	for (element* el = const_cast<element*>(this); el; el = el->parent().get()) {
+		this_ancestors.push_back(el);
+	}
+
+	// Collect ancestors of other and find common ancestor
+	std::vector<element*> other_ancestors;
+	for (element* el = other.get(); el; el = el->parent().get()) {
+		other_ancestors.push_back(el);
+	}
+
+	// Find common ancestor
+	element* common = nullptr;
+	for (auto* a : this_ancestors) {
+		for (auto* b : other_ancestors) {
+			if (a == b) {
+				common = a;
+				break;
+			}
+		}
+		if (common) break;
+	}
+
+	if (!common) {
+		return DOCUMENT_POSITION_DISCONNECTED | DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC;
+	}
+
+	// Find which comes first among siblings at the divergence point
+	// Get children of common ancestor before "this" branch and "other" branch
+	element* this_branch = nullptr;
+	element* other_branch = nullptr;
+
+	for (auto* a : this_ancestors) {
+		if (a->parent().get() == common) {
+			this_branch = a;
+			break;
+		}
+	}
+	for (auto* b : other_ancestors) {
+		if (b->parent().get() == common) {
+			other_branch = b;
+			break;
+		}
+	}
+
+	if (this_branch && other_branch) {
+		for (const auto& child : common->children()) {
+			if (child.get() == this_branch) {
+				return DOCUMENT_POSITION_FOLLOWING;
+			}
+			if (child.get() == other_branch) {
+				return DOCUMENT_POSITION_PRECEDING;
+			}
+		}
+	}
+
+	return DOCUMENT_POSITION_DISCONNECTED;
+}
+
+string element::textContent() const
+{
+	string text;
+	get_text(text);
+	return text;
+}
+
+void element::set_textContent(const string& /*text*/)
+{
+	// Base implementation does nothing - subclasses override
+}
+
+void element::add_class(const string& cls)
+{
+	set_class(cls.c_str(), true);
+}
+
+void element::remove_class(const string& cls)
+{
+	set_class(cls.c_str(), false);
+}
+
+bool element::toggle_class(const string& cls)
+{
+	if (has_class(cls)) {
+		remove_class(cls);
+		return false;
+	} else {
+		add_class(cls);
+		return true;
+	}
+}
+
+bool element::has_class(const string& cls) const
+{
+	const char* class_attr = get_attr("class");
+	if (!class_attr) {
+		return false;
+	}
+
+	string classes = class_attr;
+	size_t pos = 0;
+	while ((pos = classes.find(cls, pos)) != string::npos) {
+		// Check word boundaries
+		bool start_ok = (pos == 0 || std::isspace(classes[pos - 1]));
+		bool end_ok = (pos + cls.length() == classes.length() ||
+		               std::isspace(classes[pos + cls.length()]));
+		if (start_ok && end_ok) {
+			return true;
+		}
+		pos++;
+	}
+	return false;
+}
+
 } // namespace litehtml

@@ -188,3 +188,20 @@ std::vector<std::tuple<litehtml::string, litehtml::string>> litehtml::el_text::d
 {
 	return {};
 }
+
+void litehtml::el_text::set_nodeValue(const string& val)
+{
+	set_data(val.c_str());
+}
+
+void litehtml::el_text::set_data(const char* data)
+{
+	if (data) {
+		m_text = data;
+	} else {
+		m_text.clear();
+	}
+	m_use_transformed = false;
+	// Recompute styles to recalculate size
+	compute_styles(false, false);
+}

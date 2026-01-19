@@ -65,6 +65,7 @@ namespace litehtml
 		bool				set_pseudo_class(string_id cls, bool add) override;
 		bool				set_class(const char* pclass, bool add) override;
 		bool				is_replaced() const override;
+		element::ptr		cloneNode(bool deep = false) const override;
 		void				compute_styles(bool recursive = true, bool use_cache = true) override;
 		void				draw(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip, const std::shared_ptr<render_item> &ri) override;
 		void				draw_background(uint_ptr hdc, pixel_t x, pixel_t y, const position *clip,

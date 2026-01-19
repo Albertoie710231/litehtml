@@ -1207,6 +1207,36 @@ bool litehtml::html_tag::set_class( const char* pclass, bool add )
 
 }
 
+element::ptr litehtml::html_tag::cloneNode(bool deep) const
+{
+	auto doc = get_document();
+	if (!doc) return nullptr;
+
+	// Create a new element with the same tag
+	string_map attrs;
+	auto clone = std::make_shared<html_tag>(doc);
+
+	// Copy tag name
+	clone->set_tagName(get_tagName());
+
+	// Copy all attributes
+	for (const auto& attr : m_attrs) {
+		clone->set_attr(attr.first.c_str(), attr.second.c_str());
+	}
+
+	// Deep clone: also clone children
+	if (deep) {
+		for (const auto& child : m_children) {
+			auto child_clone = child->cloneNode(true);
+			if (child_clone) {
+				clone->appendChild(child_clone);
+			}
+		}
+	}
+
+	return clone;
+}
+
 bool litehtml::html_tag::is_replaced() const
 {
 	return false;

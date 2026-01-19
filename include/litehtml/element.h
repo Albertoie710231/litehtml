@@ -15,6 +15,29 @@ namespace litehtml
 	class dumper;
 	class render_item;
 
+	// Node type constants (per WHATWG DOM spec)
+	enum NodeType : unsigned short {
+		ELEMENT_NODE = 1,
+		ATTRIBUTE_NODE = 2,  // historical
+		TEXT_NODE = 3,
+		CDATA_SECTION_NODE = 4,
+		PROCESSING_INSTRUCTION_NODE = 7,
+		COMMENT_NODE = 8,
+		DOCUMENT_NODE = 9,
+		DOCUMENT_TYPE_NODE = 10,
+		DOCUMENT_FRAGMENT_NODE = 11
+	};
+
+	// Document position flags for compareDocumentPosition
+	enum DocumentPosition : unsigned short {
+		DOCUMENT_POSITION_DISCONNECTED = 0x01,
+		DOCUMENT_POSITION_PRECEDING = 0x02,
+		DOCUMENT_POSITION_FOLLOWING = 0x04,
+		DOCUMENT_POSITION_CONTAINS = 0x08,
+		DOCUMENT_POSITION_CONTAINED_BY = 0x10,
+		DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20
+	};
+
 	class element : public std::enable_shared_from_this<element>
 	{
 		friend class line_box;
@@ -91,6 +114,34 @@ namespace litehtml
 		virtual bool				is_body() const;
 		virtual bool				is_break() const;
 		virtual bool				is_text() const;
+
+		// Node interface methods (per WHATWG DOM spec)
+		virtual NodeType			nodeType() const;
+		virtual string				nodeName() const;
+		virtual string				nodeValue() const;
+		virtual void				set_nodeValue(const string& val);
+
+		// Tree traversal
+		element::ptr				firstChild() const;
+		element::ptr				lastChild() const;
+		element::ptr				previousSibling() const;
+		element::ptr				nextSibling() const;
+		element::ptr				parentNode() const { return parent(); }
+
+		// Node manipulation
+		virtual element::ptr		cloneNode(bool deep = false) const;
+		bool						containsNode(const element::ptr& other) const;
+		unsigned short				compareDocumentPosition(const element::ptr& other) const;
+
+		// Text content (recursive)
+		string						textContent() const;
+		void						set_textContent(const string& text);
+
+		// Class manipulation (for classList)
+		void						add_class(const string& cls);
+		void						remove_class(const string& cls);
+		bool						toggle_class(const string& cls);
+		bool						has_class(const string& cls) const;
 
 		virtual bool				on_mouse_over();
 		virtual bool				on_mouse_leave();

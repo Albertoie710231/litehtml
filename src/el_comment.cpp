@@ -22,3 +22,8 @@ void litehtml::el_comment::set_data( const char* data )
 		m_text += data;
 	}
 }
+
+void litehtml::el_comment::set_nodeValue(const string& val)
+{
+	m_text = val;
+}

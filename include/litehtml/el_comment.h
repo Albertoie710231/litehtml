@@ -19,6 +19,16 @@ namespace litehtml
 			// Comments are not rendered
 			return nullptr;
 		}
+
+		// Node interface overrides (per WHATWG DOM spec)
+		NodeType			nodeType() const override { return COMMENT_NODE; }
+		string				nodeName() const override { return "#comment"; }
+		string				nodeValue() const override { return m_text; }
+		void				set_nodeValue(const string& val) override;
+
+		// Comment node specific methods
+		const string&		data() const { return m_text; }
+		size_t				length() const { return m_text.length(); }
 	};
 }
 
